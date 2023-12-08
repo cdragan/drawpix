@@ -13,13 +13,11 @@ var preview    = null;
 
 function OnPageLoad()
 {
-    window.addEventListener("resize", OnResize);
-
     editor  = new Editor("image");
     preview = new Preview("preview");
 
-    editor.Update();
-    preview.Draw();
+    window.addEventListener("resize", OnResize);
+    OnResize();
 }
 
 function OnResize()
