@@ -10,6 +10,23 @@ body {
     float: left;
 }
 
+#image-container {
+    width: 50%;
+    padding: 0;
+}
+
+#image {
+    margin: 0;
+}
+
 #footer {
     clear: both;
+}
+
+.sel-bg {
+    fill: magenta;
+}
+
+.grid {
+    fill: #717171;
 }
