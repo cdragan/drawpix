@@ -1,0 +1,15 @@
+/* SPDX-License-Identifier: MIT */
+/* SPDX-FileCopyrightText: Copyright (c) 2023 Chris Dragan */
+
+body {
+    font:             2ex helvetica, sans-serif;
+    background-color: #DFDFDF;
+}
+
+#palette, #image-container, #preview-container {
+    float: left;
+}
+
+#footer {
+    clear: both;
+}

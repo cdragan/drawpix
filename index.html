@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html itemscope="" itemtype="http://schema.org/WebPage">
+    <head>
+        <title>Draw Pixels</title>
+        <meta http-equiv="Content-Type" content="text/html;charset=UTF-8" />
+        <meta name="description" content="Pixel Editor" />
+        <meta name="copyright" content="Chris Dragan" />
+        <script src="app.js" type="text/javascript"></script>
+        <link href="app.css" rel="stylesheet" type="text/css" />
+    </head>
+    <body onload="OnPageLoad();">
+        <div id="toolbar">
+            <p>Hello, World!</p>
+        </div>
+        <div id="palette">
+            <p>Palette</p>
+        </div>
+        <div id="image-container">
+            <svg id="image" xmlns="http://www.w3.org/2000/svg"
+                 xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1"
+                 onmousemove="OnMouseMove(evt)">
+            </svg>
+        </div>
+        <div id="preview-container">
+            <svg id="preview" xmlns="http://www.w3.org/2000/svg"
+                 xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1">
+            </svg>
+        </div>
+        <div id="footer">
+        </div>
+    </body>
+</html>
