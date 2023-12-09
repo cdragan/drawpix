@@ -9,6 +9,9 @@ const pad_size = 2;
 // Maximum dimensions in pixels (both width or height) of the edited image
 const max_dim = 256;
 
+// Initial color, black, completely transparent, format: RRGGBBAA
+const init_color = "00000000";
+
 // Editor modes
 const Mode = {
     set_color: 1
@@ -116,12 +119,54 @@ function Editor(editor_id, preview_id)
     // Multiple selectors for symmetric drawing
     this.sel_bg     = [null, null, null, null];
     this.undo       = [];
+    this.images     = [];
+    this.cur_image  = 0;
+    this.canvas     = document.createElement("canvas");
 }
 
 Editor.prototype = {
 
     ResizeImages: function(new_width, new_height, new_count)
     {
+        // Remove images at the end, if reducing their number
+        if (new_count < this.images.length) {
+            this.images.length = new_count;
+        }
+
+        // Resize all images
+        if ((new_width != this.img_width) || (new_height != this.img_height)) {
+            const old_row_size = Math.min(this.img_width,  new_width);
+            const old_height   = Math.min(this.img_height, new_height);
+            const new_row_tail = (new_width > this.img_width)
+                ? (new Array(new_width - this.img_width)).fill(init_color) : [];
+            const new_tail     = (new_height > this.img_height)
+                ? (new Array(new_width * (new_height - this.img_height))).fill(init_color) : null;
+
+            for (let i = 0; i < this.images.length; i++) {
+                let old_img = this.images[i];
+                let new_img = [];
+
+                // Copy existing rows, append new/clear tail (if wider)
+                for (let y = 0; y < old_height; y++) {
+                    let old_row_pos = y * this.img_width;
+                    let old_row = old_img.slice(old_row_pos, old_row_pos + old_row_size);
+                    new_img = new_img.concat(old_row, new_row_tail);
+                }
+
+                // Append new rows (if taller)
+                for (let y = old_height; y < new_height; y++) {
+                    new_img = new_img.concat(new_tail);
+                }
+
+                this.images[i] = new_img;
+            }
+        }
+
+        // Add new images
+        for (let i = this.images.length; i < new_count; i++) {
+            this.images[i] = (new Array(new_width * new_height)).fill(init_color);
+        }
+
         this.img_width  = new_width;
         this.img_height = new_height;
         this.img_count  = new_count;
@@ -160,29 +205,32 @@ Editor.prototype = {
 
     DrawEditor: function()
     {
+        const img_width   = this.img_width;
+        const img_height  = this.img_height;
         const rect        = this.elem.elem.getBoundingClientRect();
         const phys_width  = rect.right - rect.left;
         const phys_height = rect.bottom - rect.top;
-        const cell_width  = Math.floor((phys_width - pad_size) / this.img_width);
-        const cell_height = Math.floor((phys_height - pad_size) / this.img_height);
+        const cell_width  = Math.floor((phys_width - pad_size) / img_width);
+        const cell_height = Math.floor((phys_height - pad_size) / img_height);
 
         const svg = new DrawSvg(this.elem);
 
-        for (let x = 0; x <= this.img_width; x++) {
-            svg.Rect("", "grid", x * cell_width, 0, pad_size, this.img_height * cell_height + pad_size);
+        for (let x = 0; x <= img_width; x++) {
+            svg.Rect("", "grid", x * cell_width, 0, pad_size, img_height * cell_height + pad_size);
         }
-        for (let y = 0; y <= this.img_height; y++) {
-            svg.Rect("", "grid", 0, y * cell_height, this.img_width * cell_width, pad_size);
+        for (let y = 0; y <= img_height; y++) {
+            svg.Rect("", "grid", 0, y * cell_height, img_width * cell_width, pad_size);
         }
 
         for (let i = 0; i < this.sel_bg.length; i++) {
             svg.Rect("sel-bg-" + i, "sel-bg", 0, 0, cell_width + pad_size, cell_height + pad_size);
         }
 
-        for (let y = 0; y < this.img_height; y++) {
-            for (let x = 0; x < this.img_width; x++) {
+        const img = this.images[this.cur_image];
+        for (let y = 0; y < img_height; y++) {
+            for (let x = 0; x < img_width; x++) {
                 svg.Rect("ed_" + x + "_" + y,
-                         "#00000000", // RRGGBBAA
+                         "#" + img[y * img_width + x],
                          x * cell_width + pad_size,
                          y * cell_height + pad_size,
                          cell_width - pad_size,
@@ -206,25 +254,45 @@ Editor.prototype = {
         const img_width  = this.img_width;
         const img_height = this.img_height;
 
-        const canvas = document.createElement("canvas");
-        canvas.width  = img_width;
-        canvas.height = img_height;
+        this.canvas.width  = img_width;
+        this.canvas.height = img_height;
 
-        const ctx = canvas.getContext("2d");
+        const ctx = this.canvas.getContext("2d");
 
-        ctx.fillStyle = "blue";
-        ctx.fillRect(0, 0, img_width, img_height);
+        const img = this.images[this.cur_image];
+        for (let y = 0; y < img_height; y++) {
+            for (let x = 0; x < img_width; x++) {
+                ctx.fillStyle = "#" + img[y * img_width + x];
+                ctx.fillRect(x, y, 1, 1);
+            }
+        }
 
-        this.preview.elem.src = canvas.toDataURL();
+        this.UpdatePreviewImage();
+    },
+
+    UpdatePreviewImage: function()
+    {
+        this.preview.elem.src = this.canvas.toDataURL();
     },
 
     SetColor: function(x, y, color)
     {
-        let elem = E("ed_" + x + "_" + y);
-        elem.setAttr("style", "fill: #" + color);
+        // TODO update undo stack
+
+        let img = this.images[this.cur_image];
+        img[y * this.img_width + x] = color;
+
+        let ed_elem = E("ed_" + x + "_" + y);
+        ed_elem.setAttr("style", "fill: #" + color);
+
+        const ctx = this.canvas.getContext("2d");
+        ctx.fillStyle = "#" + color;
+        ctx.fillRect(x, y, 1, 1);
+        this.UpdatePreviewImage();
     },
 
-    GetSelectedCell: function(client_x, client_y) {
+    GetSelectedCell: function(client_x, client_y)
+    {
         const rect = this.elem.elem.getBoundingClientRect();
         const x    = Math.floor((client_x - rect.x) / this.cell_width);
         const y    = Math.floor((client_y - rect.y) / this.cell_height);
