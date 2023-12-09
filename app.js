@@ -3,11 +3,16 @@
 
 "use strict";
 
-// Padding between cells in the editor
+// Padding in pixels between cells in the editor
 const pad_size = 2;
 
-// Maximum dimension (width or height) of the edited image
+// Maximum dimensions in pixels (both width or height) of the edited image
 const max_dim = 256;
+
+// Editor modes
+const Mode = {
+    set_color: 1
+};
 
 var editor = null;
 
@@ -97,17 +102,18 @@ DrawSvg.prototype = {
 function GetDimension(id)
 {
     const value = parseInt(E(id).elem.value, 10);
-    if (isNaN(value) || (value < 1) || (value > max_dim))
-        return null;
-    return value;
+    return (isNaN(value) || (value < 1) || (value > max_dim)) ? null : value;
 }
 
-function Editor(id, preview_id)
+function Editor(editor_id, preview_id)
 {
-    this.elem       = E(id);
+    this.elem       = E(editor_id);
     this.preview    = E(preview_id);
     this.img_width  = 0;
     this.img_height = 0;
+    this.mode       = Mode.set_color;
+    // Multiple selectors for symmetric drawing
+    this.sel_bg     = [null, null, null, null];
 }
 
 Editor.prototype = {
@@ -126,11 +132,11 @@ Editor.prototype = {
         this.elem.setAttr("height", height);
         this.elem.setAttr("viewbox", "0 0 " + width + " " + height);
 
-        this.Draw();
+        this.DrawEditor();
         this.DrawPreview();
     },
 
-    Draw: function()
+    DrawEditor: function()
     {
         const rect        = this.elem.elem.getBoundingClientRect();
         const phys_width  = rect.right - rect.left;
@@ -147,12 +153,14 @@ Editor.prototype = {
             svg.Rect("", "grid", 0, y * cell_height, this.img_width * cell_width, pad_size);
         }
 
-        svg.Rect("sel-bg", "sel-bg", 0, 0, cell_width + pad_size, cell_height + pad_size);
+        for (let i = 0; i < this.sel_bg.length; i++) {
+            svg.Rect("sel-bg-" + i, "sel-bg", 0, 0, cell_width + pad_size, cell_height + pad_size);
+        }
 
         for (let y = 0; y < this.img_height; y++) {
             for (let x = 0; x < this.img_width; x++) {
                 svg.Rect("ed_" + x + "_" + y,
-                         "#00000000",
+                         "#00000000", // RRGGBBAA
                          x * cell_width + pad_size,
                          y * cell_height + pad_size,
                          cell_width - pad_size,
@@ -162,8 +170,10 @@ Editor.prototype = {
 
         svg.Commit();
 
-        E("sel-bg").setAttr("visibility", "hidden");
-        E("sel-bg").setAttr("class", "sel-bg");
+        for (let i = 0; i < this.sel_bg.length; i++) {
+            this.sel_bg[i] = E("sel-bg-" + i);
+            this.sel_bg[i].setAttr("visibility", "hidden");
+        }
 
         this.cell_width  = cell_width;
         this.cell_height = cell_height;
@@ -186,27 +196,70 @@ Editor.prototype = {
         this.preview.elem.src = canvas.toDataURL();
     },
 
-    OnMouseMove: function(client_x, client_y)
+    SetColor: function(x, y, color)
     {
+        let elem = E("ed_" + x + "_" + y);
+        elem.setAttr("style", "fill: #" + color);
+    },
+
+    GetSelectedCell: function(client_x, client_y) {
         const rect = this.elem.elem.getBoundingClientRect();
         const x    = Math.floor((client_x - rect.x) / this.cell_width);
         const y    = Math.floor((client_y - rect.y) / this.cell_height);
+        return { x: x, y: y };
+    },
 
-        const sel_bg = E("sel-bg");
-
+    GetCellIndex: function(i, x, y)
+    {
         if (x < 0 || y < 0 || x >= this.img_width || y >= this.img_height) {
-            sel_bg.setAttr("visibility", "hidden");
-            return;
+            return null;
         }
 
-        sel_bg.setAttr("visibility", "visible");
-        sel_bg.setAttr("transform", "translate(" + (x * this.cell_width) + "," + (y * this.cell_height) + ")");
+        switch (i) {
+            case 1:
+            case 3:
+                x = this.img_width - 1 - x;
+                if (i === 1)
+                    break;
+            case 2:
+                y = this.img_height - 1 - y;
+        }
+
+        return { x: x, y: y };
+    },
+
+    OnMouseMove: function(client_x, client_y)
+    {
+        const sel = this.GetSelectedCell(client_x, client_y);
+
+        for (let i = 0; i < this.sel_bg.length; i++) {
+            let cell = this.GetCellIndex(i, sel.x, sel.y);
+
+            if (cell) {
+                cell.x *= this.cell_width;
+                cell.y *= this.cell_height;
+                this.sel_bg[i].setAttr("visibility", "visible");
+                this.sel_bg[i].setAttr("transform", "translate(" + cell.x + "," + cell.y + ")");
+            }
+            else {
+                this.sel_bg[i].setAttr("visibility", "hidden");
+            }
+        }
     },
 
     OnMouseClick: function(client_x, client_y)
     {
-        const rect = this.elem.elem.getBoundingClientRect();
-        const x    = Math.floor((client_x - rect.x) / this.cell_width);
-        const y    = Math.floor((client_y - rect.y) / this.cell_height);
+        const sel = this.GetSelectedCell(client_x, client_y);
+
+        for (let i = 0; i < this.sel_bg.length; i++) {
+            let cell = this.GetCellIndex(i, sel.x, sel.y);
+
+            if ( ! cell) {
+                continue;
+            }
+
+            let color = "1010A080";
+            this.SetColor(cell.x, cell.y, color);
+        }
     }
 };
