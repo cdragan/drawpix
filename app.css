@@ -6,6 +6,10 @@ body {
     background-color: #DFDFDF;
 }
 
+#toolbar {
+    margin-bottom: 3em;
+}
+
 #palette, #image-container, #preview-container {
     float: left;
 }

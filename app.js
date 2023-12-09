@@ -111,17 +111,39 @@ function Editor(editor_id, preview_id)
     this.preview    = E(preview_id);
     this.img_width  = 0;
     this.img_height = 0;
+    this.img_count  = 0;
     this.mode       = Mode.set_color;
     // Multiple selectors for symmetric drawing
     this.sel_bg     = [null, null, null, null];
+    this.undo       = [];
 }
 
 Editor.prototype = {
 
+    ResizeImages: function(new_width, new_height, new_count)
+    {
+        this.img_width  = new_width;
+        this.img_height = new_height;
+        this.img_count  = new_count;
+    },
+
     Update: function()
     {
-        this.img_width  = GetDimension("img_width")  || this.img_width;
-        this.img_height = GetDimension("img_height") || this.img_height;
+        const new_width  = GetDimension("img_width")  || this.img_width;
+        const new_height = GetDimension("img_height") || this.img_height;
+        const new_count  = GetDimension("img_count")  || this.img_count;
+
+        if (new_width  == this.img_width  &&
+            new_height == this.img_height &&
+            new_count  == this.img_count) {
+            return;
+        }
+
+        if (this.img_width) {
+            // TODO update undo stack
+        }
+
+        this.ResizeImages(new_width, new_height, new_count);
 
         // Set height of image-container and image to match the width
         const elem = E("image-container");
