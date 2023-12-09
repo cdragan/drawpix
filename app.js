@@ -9,13 +9,11 @@ const pad_size = 2;
 // Maximum dimension (width or height) of the edited image
 const max_dim = 256;
 
-var editor  = null;
-var preview = null;
+var editor = null;
 
 function OnPageLoad()
 {
-    editor  = new Editor("image");
-    preview = new Preview("preview", editor);
+    editor = new Editor("image", "preview");
 
     window.addEventListener("resize", OnResize);
     OnResize();
@@ -24,7 +22,6 @@ function OnPageLoad()
 function OnResize()
 {
     editor.Update();
-    preview.Draw();
 }
 
 function OnMouseMove(e)
@@ -105,9 +102,10 @@ function GetDimension(id)
     return value;
 }
 
-function Editor(id)
+function Editor(id, preview_id)
 {
     this.elem       = E(id);
+    this.preview    = E(preview_id);
     this.img_width  = 0;
     this.img_height = 0;
 }
@@ -129,6 +127,7 @@ Editor.prototype = {
         this.elem.setAttr("viewbox", "0 0 " + width + " " + height);
 
         this.Draw();
+        this.DrawPreview();
     },
 
     Draw: function()
@@ -170,6 +169,23 @@ Editor.prototype = {
         this.cell_height = cell_height;
     },
 
+    DrawPreview: function()
+    {
+        const img_width  = this.img_width;
+        const img_height = this.img_height;
+
+        const canvas = document.createElement("canvas");
+        canvas.width  = img_width;
+        canvas.height = img_height;
+
+        const ctx = canvas.getContext("2d");
+
+        ctx.fillStyle = "blue";
+        ctx.fillRect(0, 0, img_width, img_height);
+
+        this.preview.elem.src = canvas.toDataURL();
+    },
+
     OnMouseMove: function(client_x, client_y)
     {
         const rect = this.elem.elem.getBoundingClientRect();
@@ -192,31 +208,5 @@ Editor.prototype = {
         const rect = this.elem.elem.getBoundingClientRect();
         const x    = Math.floor((client_x - rect.x) / this.cell_width);
         const y    = Math.floor((client_y - rect.y) / this.cell_height);
-    }
-};
-
-function Preview(id, editor)
-{
-    this.elem   = E(id);
-    this.editor = editor;
-}
-
-Preview.prototype = {
-
-    Draw: function()
-    {
-        const img_width  = this.editor.img_width;
-        const img_height = this.editor.img_height;
-
-        const canvas = document.createElement("canvas");
-        canvas.width  = img_width;
-        canvas.height = img_height;
-
-        const ctx = canvas.getContext("2d");
-
-        ctx.fillStyle = "blue";
-        ctx.fillRect(0, 0, img_width, img_height);
-
-        this.elem.elem.src = canvas.toDataURL();
     }
 };
