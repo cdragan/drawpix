@@ -10,7 +10,10 @@
     </head>
     <body onload="OnPageLoad();">
         <div id="toolbar">
-            <p>Hello, World!</p>
+            <p>
+                Dimensions: <input type="text" id="img_width"  value="24" size="3" maxLength="3" onkeyup="OnResize()" />
+                          x <input type="text" id="img_height" value="24" size="3" maxLength="3" onkeyup="OnResize()" />
+            </p>
         </div>
         <div id="palette">
             <p>Palette</p>
@@ -18,7 +21,7 @@
         <div id="image-container">
             <svg id="image" xmlns="http://www.w3.org/2000/svg"
                  xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1"
-                 onmousemove="OnMouseMove(evt)">
+                 onmousemove="OnMouseMove(evt)" onclick="OnMouseClick(evt)">
             </svg>
         </div>
         <div id="preview-container">

@@ -6,15 +6,16 @@
 // Padding between cells in the editor
 const pad_size = 2;
 
-var img_width  = 24;
-var img_height = 24;
-var editor     = null;
-var preview    = null;
+// Maximum dimension (width or height) of the edited image
+const max_dim = 256;
+
+var editor  = null;
+var preview = null;
 
 function OnPageLoad()
 {
     editor  = new Editor("image");
-    preview = new Preview("preview");
+    preview = new Preview("preview", editor);
 
     window.addEventListener("resize", OnResize);
     OnResize();
@@ -29,6 +30,11 @@ function OnResize()
 function OnMouseMove(e)
 {
     editor.OnMouseMove(e.clientX, e.clientY);
+}
+
+function OnMouseClick(e)
+{
+    editor.OnMouseClick(e.clientX, e.clientY);
 }
 
 function Elem(id)
@@ -74,7 +80,8 @@ function SvgColor(color)
 
 DrawSvg.prototype.Rect = function(id, color, x, y, width, height)
 {
-    this.contents += '<rect id="' + id + '" ' +
+    id = id ? ('id="' + id + '"') : "";
+    this.contents += '<rect ' + id + ' ' +
                            SvgColor(color) + " " +
                            'x="' + x + '" ' +
                            'y="' + y + '" ' +
@@ -84,20 +91,34 @@ DrawSvg.prototype.Rect = function(id, color, x, y, width, height)
     return this;
 };
 
+function GetDimension(id)
+{
+    const value = parseInt(E(id).elem.value, 10);
+    if (isNaN(value) || (value < 1) || (value > max_dim))
+        return null;
+    return value;
+}
+
 function Editor(id)
 {
-    this.elem = E(id);
+    this.elem       = E(id);
+    this.img_width  = 0;
+    this.img_height = 0;
 }
 
 Editor.prototype.Update = function()
 {
+    this.img_width  = GetDimension("img_width")  || this.img_width;
+    this.img_height = GetDimension("img_height") || this.img_height;
+
     // Set height of image-container and image to match the width
     const elem = E("image-container");
     const width  = Math.floor(elem.elem.offsetWidth);
-    const height = Math.floor(width * img_height / img_width);
+    const height = Math.floor(width * this.img_height / this.img_width);
     elem.elem.style.height = height + "px";
     this.elem.setAttr("width", width);
     this.elem.setAttr("height", height);
+    this.elem.setAttr("viewbox", "0 0 " + width + " " + height);
 
     this.Draw();
 };
@@ -107,26 +128,22 @@ Editor.prototype.Draw = function()
     const rect        = this.elem.elem.getBoundingClientRect();
     const phys_width  = rect.right - rect.left;
     const phys_height = rect.bottom - rect.top;
-    const cell_width  = Math.floor((phys_width - pad_size) / img_width);
-    const cell_height = Math.floor((phys_height - pad_size) / img_height);
-
-    const viewbox_width  = (cell_width * img_width) + pad_size;
-    const viewbox_height = (cell_height * img_height) + pad_size;
-    this.elem.setAttr("viewbox", "0 0 " + phys_width + " " + phys_height);
+    const cell_width  = Math.floor((phys_width - pad_size) / this.img_width);
+    const cell_height = Math.floor((phys_height - pad_size) / this.img_height);
 
     const svg = new DrawSvg(this.elem);
 
-    for (let x = 0; x <= img_width; x++) {
-        svg.Rect("", "grid", x * cell_width, 0, pad_size, img_height * cell_height + pad_size);
+    for (let x = 0; x <= this.img_width; x++) {
+        svg.Rect("", "grid", x * cell_width, 0, pad_size, this.img_height * cell_height + pad_size);
     }
-    for (let y = 0; y <= img_height; y++) {
-        svg.Rect("", "grid", 0, y * cell_height, img_width * cell_width, pad_size);
+    for (let y = 0; y <= this.img_height; y++) {
+        svg.Rect("", "grid", 0, y * cell_height, this.img_width * cell_width, pad_size);
     }
 
     svg.Rect("sel-bg", "sel-bg", 0, 0, cell_width + pad_size, cell_height + pad_size);
 
-    for (let y = 0; y < img_height; y++) {
-        for (let x = 0; x < img_width; x++) {
+    for (let y = 0; y < this.img_height; y++) {
+        for (let x = 0; x < this.img_width; x++) {
             svg.Rect("ed_" + x + "_" + y,
                      "#00000000",
                      x * cell_width + pad_size,
@@ -153,7 +170,7 @@ Editor.prototype.OnMouseMove = function(client_x, client_y)
 
     const sel_bg = E("sel-bg");
 
-    if (x < 0 || y < 0 || x >= img_width || y >= img_height) {
+    if (x < 0 || y < 0 || x >= this.img_width || y >= this.img_height) {
         sel_bg.setAttr("visibility", "hidden");
         return;
     }
@@ -162,13 +179,24 @@ Editor.prototype.OnMouseMove = function(client_x, client_y)
     sel_bg.setAttr("transform", "translate(" + (x * this.cell_width) + "," + (y * this.cell_height) + ")");
 };
 
-function Preview(id)
+Editor.prototype.OnMouseClick = function(client_x, client_y)
 {
-    this.elem = E(id);
+    const rect = this.elem.elem.getBoundingClientRect();
+    const x    = Math.floor((client_x - rect.x) / this.cell_width);
+    const y    = Math.floor((client_y - rect.y) / this.cell_height);
+};
+
+function Preview(id, editor)
+{
+    this.elem   = E(id);
+    this.editor = editor;
 }
 
 Preview.prototype.Draw = function()
 {
+    const img_width  = this.editor.img_width;
+    const img_height = this.editor.img_height;
+
     const canvas = document.createElement("canvas");
     canvas.width  = img_width;
     canvas.height = img_height;
