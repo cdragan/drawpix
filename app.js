@@ -280,10 +280,14 @@ Editor.prototype = {
         this.preview.elem.src = this.canvas.toDataURL();
     },
 
+    UpdateMode: function()
+    {
+        this.mirror_x = E("mirror_x").elem.checked;
+        this.mirror_y = E("mirror_y").elem.checked;
+    },
+
     SetColor: function(x, y, color)
     {
-        // TODO update undo stack
-
         let img = this.images[this.cur_image];
         img[y * this.img_width + x] = color;
 
@@ -294,6 +298,8 @@ Editor.prototype = {
         ctx.fillStyle = "#" + color;
         ctx.fillRect(x, y, 1, 1);
         this.UpdatePreviewImage();
+
+        // TODO add op to undo stack
     },
 
     GetSelectedCell: function(client_x, client_y)
@@ -313,13 +319,20 @@ Editor.prototype = {
         switch (i) {
             case 1:
             case 3:
+                if ( ! this.mirror_x) {
+                    return null;
+                }
                 if ((this.img_width & 1) && (x === this.img_width - 1 - x)) {
                     return null;
                 }
                 x = this.img_width - 1 - x;
-                if (i === 1)
+                if (i === 1) {
                     break;
+                }
             case 2:
+                if ( ! this.mirror_y) {
+                    return null;
+                }
                 if ((this.img_height & 1) && (y === this.img_height - 1 - y)) {
                     return null;
                 }
@@ -331,6 +344,8 @@ Editor.prototype = {
 
     OnMouseMove: function(client_x, client_y)
     {
+        this.UpdateMode();
+
         const sel = this.GetSelectedCell(client_x, client_y);
 
         for (let i = 0; i < this.sel_bg.length; i++) {
@@ -350,7 +365,11 @@ Editor.prototype = {
 
     OnMouseClick: function(client_x, client_y)
     {
+        this.UpdateMode();
+
         const sel = this.GetSelectedCell(client_x, client_y);
+
+        // TODO update undo stack
 
         for (let i = 0; i < this.sel_bg.length; i++) {
             let cell = this.GetCellIndex(i, sel.x, sel.y);
