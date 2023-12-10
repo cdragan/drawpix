@@ -99,6 +99,16 @@ DrawSvg.prototype = {
                                'height="' + height + '" ' +
                                '/>';
         return this;
+    },
+
+    BeginGroup: function(id)
+    {
+        this.contents += '<g id="' + id + '">';
+    },
+
+    EndGroup: function()
+    {
+        this.contents += "</g>";
     }
 };
 
@@ -227,10 +237,6 @@ Editor.prototype = {
             svg.Rect("", "grid", 0, y * cell_height, img_width * cell_width, pad_size);
         }
 
-        for (let i = 0; i < this.sel_bg.length; i++) {
-            svg.Rect("sel-bg-" + i, "sel-bg", 0, 0, cell_width + pad_size, cell_height + pad_size);
-        }
-
         const img = this.images[this.cur_image];
         for (let y = 0; y < img_height; y++) {
             for (let x = 0; x < img_width; x++) {
@@ -241,6 +247,16 @@ Editor.prototype = {
                          cell_width - pad_size,
                          cell_height - pad_size);
             }
+        }
+
+        for (let i = 0; i < this.sel_bg.length; i++) {
+            svg.BeginGroup("sel-bg-" + i);
+            svg.Rect("", "sel-bg", 0, 0, cell_width + pad_size, pad_size);
+            svg.Rect("", "sel-bg", 0, cell_height, cell_width + pad_size, pad_size);
+            svg.Rect("", "sel-bg", 0, pad_size, pad_size, cell_height - pad_size);
+            svg.Rect("", "sel-bg", cell_width, pad_size, pad_size, cell_height - pad_size);
+            svg.Rect("sel-fg-" + i, "#000000", pad_size, pad_size, cell_width - pad_size, cell_height - pad_size);
+            svg.EndGroup();
         }
 
         svg.Commit();
