@@ -240,7 +240,7 @@ Editor.prototype = {
         const img = this.images[this.cur_image];
         for (let y = 0; y < img_height; y++) {
             for (let x = 0; x < img_width; x++) {
-                svg.Rect("ed_" + x + "_" + y,
+                svg.Rect("ed-" + x + "-" + y,
                          "#" + img[y * img_width + x],
                          x * cell_width + pad_size,
                          y * cell_height + pad_size,
@@ -307,7 +307,7 @@ Editor.prototype = {
         let img = this.images[this.cur_image];
         img[y * this.img_width + x] = color;
 
-        let ed_elem = E("ed_" + x + "_" + y);
+        let ed_elem = E("ed-" + x + "-" + y);
         ed_elem.setAttr("style", "fill: #" + color);
 
         const ctx = this.canvas.getContext("2d");
