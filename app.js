@@ -128,6 +128,7 @@ function Editor(editor_id, preview_id)
     this.mode       = Mode.set_color;
     // Multiple selectors for symmetric drawing
     this.sel_bg     = [null, null, null, null];
+    this.sel_fg     = [null, null, null, null];
     this.undo       = [];
     this.images     = [];
     this.cur_image  = 0;
@@ -263,7 +264,9 @@ Editor.prototype = {
 
         for (let i = 0; i < this.sel_bg.length; i++) {
             this.sel_bg[i] = E("sel-bg-" + i);
+            this.sel_fg[i] = E("sel-fg-" + i);
             this.sel_bg[i].setAttr("visibility", "hidden");
+            this.sel_fg[i].setAttr("visibility", "hidden");
         }
 
         this.cell_width  = cell_width;
@@ -332,11 +335,13 @@ Editor.prototype = {
             return null;
         }
 
+        let visible = true;
+
         switch (i) {
             case 1:
             case 3:
                 if ( ! this.mirror_x) {
-                    return null;
+                    visible = false;
                 }
                 if ((this.img_width & 1) && (x === this.img_width - 1 - x)) {
                     return null;
@@ -347,7 +352,7 @@ Editor.prototype = {
                 }
             case 2:
                 if ( ! this.mirror_y) {
-                    return null;
+                    visible = false;
                 }
                 if ((this.img_height & 1) && (y === this.img_height - 1 - y)) {
                     return null;
@@ -355,7 +360,7 @@ Editor.prototype = {
                 y = this.img_height - 1 - y;
         }
 
-        return { x: x, y: y };
+        return { x: x, y: y, visible: visible };
     },
 
     OnMouseMove: function(client_x, client_y)
@@ -372,6 +377,7 @@ Editor.prototype = {
                 cell.y *= this.cell_height;
                 this.sel_bg[i].setAttr("visibility", "visible");
                 this.sel_bg[i].setAttr("transform", "translate(" + cell.x + "," + cell.y + ")");
+                this.sel_fg[i].setAttr("visibility", cell.visible ? "visible" : "hidden");
             }
             else {
                 this.sel_bg[i].setAttr("visibility", "hidden");
@@ -390,7 +396,7 @@ Editor.prototype = {
         for (let i = 0; i < this.sel_bg.length; i++) {
             let cell = this.GetCellIndex(i, sel.x, sel.y);
 
-            if ( ! cell) {
+            if ( ! cell || ! cell.visible) {
                 continue;
             }
 
