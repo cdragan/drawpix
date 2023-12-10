@@ -22,14 +22,14 @@ var editor = null;
 function OnPageLoad()
 {
     editor = new Editor("image", "preview");
+    editor.UpdateDimensions();
 
-    window.addEventListener("resize", OnResize);
-    OnResize();
+    window.addEventListener("resize", function() { editor.UpdateWindowSize(); });
 }
 
-function OnResize()
+function OnUpdateDimensions()
 {
-    editor.Update();
+    editor.UpdateDimensions();
 }
 
 function OnMouseMove(e)
@@ -172,7 +172,7 @@ Editor.prototype = {
         this.img_count  = new_count;
     },
 
-    Update: function()
+    UpdateDimensions: function()
     {
         const new_width  = GetDimension("img_width")  || this.img_width;
         const new_height = GetDimension("img_height") || this.img_height;
@@ -190,6 +190,11 @@ Editor.prototype = {
 
         this.ResizeImages(new_width, new_height, new_count);
 
+        this.UpdateWindowSize();
+    },
+
+    UpdateWindowSize: function()
+    {
         // Set height of image-container and image to match the width
         const elem = E("image-container");
         const width  = Math.floor(elem.elem.offsetWidth);
@@ -308,10 +313,16 @@ Editor.prototype = {
         switch (i) {
             case 1:
             case 3:
+                if ((this.img_width & 1) && (x === this.img_width - 1 - x)) {
+                    return null;
+                }
                 x = this.img_width - 1 - x;
                 if (i === 1)
                     break;
             case 2:
+                if ((this.img_height & 1) && (y === this.img_height - 1 - y)) {
+                    return null;
+                }
                 y = this.img_height - 1 - y;
         }
 

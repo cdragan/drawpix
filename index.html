@@ -10,9 +10,10 @@
     </head>
     <body onload="OnPageLoad();">
         <div id="toolbar">
-            <label>Width  <input type="text" id="img_width"  title="Width of one image in pixels"  value="24" size="3" maxLength="3" onkeyup="OnResize()"></label>
-            <label>Height <input type="text" id="img_height" title="Height of one image in pixels" value="24" size="3" maxLength="3" onkeyup="OnResize()"></label>
-            <Label>Images <input type="text" id="img_count"  title="Number of images"              value="8"  size="3" maxLength="3" onkeyup="OnResize()"></label>
+            <label>Width  <input type="text" id="img_width"  title="Width of one image in pixels"  value="24" size="3" maxLength="3"></label>
+            <label>Height <input type="text" id="img_height" title="Height of one image in pixels" value="24" size="3" maxLength="3"></label>
+            <Label>Images <input type="text" id="img_count"  title="Number of images"              value="8"  size="3" maxLength="3"></label>
+            <button onclick="OnUpdateDimensions()">Update</button>
         </div>
         <div id="palette">
             <p>Palette</p>
