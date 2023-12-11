@@ -22,6 +22,7 @@ var editor = null;
 function OnPageLoad()
 {
     editor = new Editor("image", "preview");
+    editor.RebuildPalette(true);
     editor.UpdateDimensions();
 
     window.addEventListener("resize", function() { editor.UpdateWindowSize(); });
@@ -40,6 +41,21 @@ function OnMouseMove(e)
 function OnMouseClick(e)
 {
     editor.OnMouseClick(e.clientX, e.clientY);
+}
+
+function ChangePalette(i)
+{
+    editor.ChangePalette(i);
+}
+
+function AddColorToPalette()
+{
+    editor.AddColorToPalette();
+}
+
+function OptimizePalette()
+{
+    editor.OptimizePalette();
 }
 
 function Elem(id)
@@ -130,6 +146,8 @@ function Editor(editor_id, preview_id)
     this.sel_bg     = [null, null, null, null];
     this.sel_fg     = [null, null, null, null];
     this.undo       = [];
+    this.palette    = [];
+    this.cur_color  = 0;
     this.images     = [];
     this.cur_image  = 0;
     this.canvas     = document.createElement("canvas");
@@ -201,6 +219,8 @@ Editor.prototype = {
 
         this.ResizeImages(new_width, new_height, new_count);
 
+        this.DrawPalette();
+
         this.UpdateWindowSize();
     },
 
@@ -216,7 +236,52 @@ Editor.prototype = {
         this.elem.setAttr("viewbox", "0 0 " + width + " " + height);
 
         this.DrawEditor();
+
         this.DrawPreview();
+    },
+
+    RebuildPalette: function(clear)
+    {
+        const img_width  = this.img_width;
+        const img_height = this.img_height;
+
+        if ( ! this.palette.length || clear) {
+            this.palette = ["00000000"];
+        }
+
+        const img = this.images[this.cur_image];
+        for (let y = 0; y < img_height; y++) {
+            for (let x = 0; x < img_width; x++) {
+                let color = img[y * img_width + x];
+                if (color.length === 6) {
+                    color += "FF";
+                }
+
+                if (this.palette.indexOf(color) === -1) {
+                    this.palette.push(color);
+                }
+            }
+        }
+    },
+
+    DrawPalette: function()
+    {
+        let contents = "";
+
+        for (let i = 0; i < this.palette.length; i++) {
+            let color = this.palette[i];
+
+            contents += '<div><label class="palette-color" id="palette-label-' + i + '" ' +
+                        'style="background-color: #' + color + '">' +
+                        '<input type="text" id="palette-' + i + '" size="9" maxLength="8" value="' + color + '" ' +
+                        'onkeyup="ChangePalette(' + i + ')">' +
+                        '</label></div>';
+        }
+
+        contents += '<div style="margin-bottom: 0"><button onclick="AddColorToPalette()">Add Color</button></div>';
+        contents += '<div><button onclick="OptimizePalette()">Optimize</button></div>';
+
+        E("palette").setContents(contents);
     },
 
     DrawEditor: function()
@@ -393,6 +458,8 @@ Editor.prototype = {
 
         // TODO update undo stack
 
+        const color = this.palette[this.cur_color];
+
         for (let i = 0; i < this.sel_bg.length; i++) {
             let cell = this.GetCellIndex(i, sel.x, sel.y);
 
@@ -400,8 +467,65 @@ Editor.prototype = {
                 continue;
             }
 
-            let color = "1010A080";
             this.SetColor(cell.x, cell.y, color);
         }
+    },
+
+    ChangePalette: function(i)
+    {
+        let new_color = E("palette-" + i).elem.value;
+        if ( ! /^[A-Fa-f0-9]*$/.test(new_color)) {
+            return;
+        }
+
+        while (new_color.length < 8) {
+            new_color += (new_color.length < 6) ? "0" : "F";
+        }
+
+        new_color = new_color.toUpperCase();
+
+        let old_color = this.palette[i];
+        this.palette[i] = new_color;
+
+        E("palette-label-" + i).elem.style = "background-color: #" + new_color;
+
+        const img_width  = this.img_width;
+        const img_height = this.img_height;
+        let   changed    = false;
+
+        const img = this.images[this.cur_image];
+        for (let y = 0; y < img_height; y++) {
+            for (let x = 0; x < img_width; x++) {
+                let cur_color = img[y * img_width + x];
+                if (cur_color.length === 6) {
+                    cur_color += "FF";
+                }
+
+                if (old_color === cur_color) {
+                    if ( ! changed) {
+                        // TODO update undo stack
+                    }
+
+                    img[y * img_width + x] = new_color;
+                    changed = true;
+                }
+            }
+        }
+
+        if (changed) {
+            this.DrawEditor();
+        }
+    },
+
+    AddColorToPalette: function()
+    {
+        this.palette.push("FFFFFFFF");
+        this.DrawPalette();
+    },
+
+    OptimizePalette: function()
+    {
+        this.RebuildPalette(true);
+        this.DrawPalette();
     }
 };

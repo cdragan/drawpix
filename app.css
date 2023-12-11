@@ -15,7 +15,7 @@ body {
 }
 
 #palette {
-    width: 20%;
+    width: 10em;
 }
 
 #image-container {
@@ -29,6 +29,15 @@ body {
 
 #preview {
     border: 1px solid #B7B7B7;
+}
+
+#palette > div {
+    margin-bottom: 2ex;
+}
+
+.palette-color {
+    padding: 0.8ex 0.5ex 0.8ex 2em;
+    border: 1px solid black;
 }
 
 .sel-bg {
