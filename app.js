@@ -505,7 +505,7 @@ Editor.prototype = {
         new_color = new_color.toUpperCase();
 
         const old_color = this.palette[i];
-        if (old_color !== new_color) {
+        if (old_color === new_color) {
             return;
         }
         this.palette[i] = new_color;
