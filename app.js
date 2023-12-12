@@ -43,6 +43,11 @@ function OnMouseClick(e)
     editor.OnMouseClick(e.clientX, e.clientY);
 }
 
+function SelectColor(i)
+{
+    editor.SelectColor(i);
+}
+
 function ChangePalette(i)
 {
     editor.ChangePalette(i);
@@ -272,6 +277,7 @@ Editor.prototype = {
             let color = this.palette[i];
 
             contents += '<div><label class="palette-color" id="palette-label-' + i + '" ' +
+                        'onclick="SelectColor(' + i + ')" ' +
                         'style="background-color: #' + color + '">' +
                         '<input type="text" id="palette-' + i + '" size="9" maxLength="8" value="' + color + '" ' +
                         'onkeyup="ChangePalette(' + i + ')">' +
@@ -282,6 +288,11 @@ Editor.prototype = {
         contents += '<div><button onclick="OptimizePalette()">Optimize</button></div>';
 
         E("palette").setContents(contents);
+
+        if (this.cur_color >= this.palette.length) {
+            this.cur_color = this.palette.length - 1;
+        }
+        E("palette-label-" + this.cur_color).setAttr("class", "palette-selected-color");
     },
 
     DrawEditor: function()
@@ -468,6 +479,15 @@ Editor.prototype = {
             }
 
             this.SetColor(cell.x, cell.y, color);
+        }
+    },
+
+    SelectColor: function(i)
+    {
+        if (i !== this.cur_color) {
+            E("palette-label-" + this.cur_color).setAttr("class", "palette-color");
+            E("palette-label-" + i).setAttr("class", "palette-selected-color");
+            this.cur_color = i;
         }
     },
 
