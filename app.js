@@ -43,6 +43,11 @@ function OnMouseClick(e)
     editor.OnMouseClick(e.clientX, e.clientY);
 }
 
+function OnImageSelect(e)
+{
+    editor.OnImageSelect(e.clientX, e.clientY);
+}
+
 function SelectColor(i)
 {
     editor.SelectColor(i);
@@ -539,6 +544,24 @@ Editor.prototype = {
 
             this.SetColor(cell.x, cell.y, color);
         }
+    },
+
+    OnImageSelect: function(client_x, client_y)
+    {
+        const rect = this.all_img.elem.getBoundingClientRect();
+        const img  = Math.floor((client_x - rect.x) / this.img_width);
+
+        if (img < 0 || img >= this.img_count) {
+            return;
+        }
+
+        this.cur_image = img;
+
+        this.DrawEditor();
+
+        this.DrawPreview();
+
+        this.OptimizePalette();
     },
 
     UpdateSelCursor: function()
