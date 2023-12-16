@@ -564,6 +564,7 @@ Editor.prototype = {
 
         if (changed) {
             this.DrawEditor();
+            this.DrawPreview();
         }
     },
 
