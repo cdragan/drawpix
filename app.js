@@ -21,7 +21,7 @@ var editor = null;
 
 function OnPageLoad()
 {
-    editor = new Editor("image", "preview");
+    editor = new Editor("image", "preview", "all");
     editor.RebuildPalette(true);
     editor.UpdateDimensions();
 
@@ -139,23 +139,25 @@ function GetDimension(id)
     return (isNaN(value) || (value < 1) || (value > max_dim)) ? null : value;
 }
 
-function Editor(editor_id, preview_id)
+function Editor(editor_id, preview_id, all_id)
 {
-    this.elem       = E(editor_id);
-    this.preview    = E(preview_id);
-    this.img_width  = 0;
-    this.img_height = 0;
-    this.img_count  = 0;
-    this.mode       = Mode.set_color;
+    this.elem           = E(editor_id);
+    this.preview        = E(preview_id);
+    this.all_img        = E(all_id);
+    this.img_width      = 0;
+    this.img_height     = 0;
+    this.img_count      = 0;
+    this.mode           = Mode.set_color;
     // Multiple selectors for symmetric drawing
-    this.sel_bg     = [null, null, null, null];
-    this.sel_fg     = [null, null, null, null];
-    this.undo       = [];
-    this.palette    = [];
-    this.cur_color  = 0;
-    this.images     = [];
-    this.cur_image  = 0;
-    this.canvas     = document.createElement("canvas");
+    this.sel_bg         = [null, null, null, null];
+    this.sel_fg         = [null, null, null, null];
+    this.undo           = [];
+    this.palette        = [];
+    this.cur_color      = 0;
+    this.images         = [];
+    this.cur_image      = 0;
+    this.preview_canvas = document.createElement("canvas");
+    this.all_img_canvas = document.createElement("canvas");
 }
 
 Editor.prototype = {
@@ -248,6 +250,8 @@ Editor.prototype = {
         this.DrawEditor();
 
         this.DrawPreview();
+
+        this.DrawAllImg();
     },
 
     RebuildPalette: function(clear)
@@ -375,10 +379,10 @@ Editor.prototype = {
         const img_width  = this.img_width;
         const img_height = this.img_height;
 
-        this.canvas.width  = img_width;
-        this.canvas.height = img_height;
+        this.preview_canvas.width  = img_width;
+        this.preview_canvas.height = img_height;
 
-        const ctx = this.canvas.getContext("2d");
+        const ctx = this.preview_canvas.getContext("2d");
 
         const img = this.images[this.cur_image];
         for (let y = 0; y < img_height; y++) {
@@ -393,7 +397,36 @@ Editor.prototype = {
 
     UpdatePreviewImage: function()
     {
-        this.preview.elem.src = this.canvas.toDataURL();
+        this.preview.elem.src = this.preview_canvas.toDataURL();
+    },
+
+    DrawAllImg: function()
+    {
+        const img_width  = this.img_width;
+        const img_height = this.img_height;
+        const img_count  = this.img_count;
+
+        this.all_img_canvas.width  = img_width * img_count;
+        this.all_img_canvas.height = img_height;
+
+        const ctx = this.all_img_canvas.getContext("2d");
+
+        for (let i = 0; i < img_count; i++) {
+            let img = this.images[i];
+            for (let y = 0; y < img_height; y++) {
+                for (let x = 0; x < img_width; x++) {
+                    ctx.fillStyle = "#" + img[y * img_width + x];
+                    ctx.fillRect(x + img_width * i, y, 1, 1);
+                }
+            }
+        }
+
+        this.UpdateAllImages();
+    },
+
+    UpdateAllImages: function()
+    {
+        this.all_img.elem.src = this.all_img_canvas.toDataURL();
     },
 
     UpdateMode: function()
@@ -410,10 +443,15 @@ Editor.prototype = {
         let ed_elem = E("ed-" + x + "-" + y);
         ed_elem.setAttr("style", "fill: #" + color);
 
-        const ctx = this.canvas.getContext("2d");
+        let ctx = this.preview_canvas.getContext("2d");
         ctx.fillStyle = "#" + color;
         ctx.fillRect(x, y, 1, 1);
         this.UpdatePreviewImage();
+
+        ctx = this.all_img_canvas.getContext("2d");
+        ctx.fillStyle = "#" + color;
+        ctx.fillRect(x + this.cur_image * this.img_width, y, 1, 1);
+        this.UpdateAllImages();
 
         // TODO add op to undo stack
     },
@@ -570,6 +608,7 @@ Editor.prototype = {
         if (changed) {
             this.DrawEditor();
             this.DrawPreview();
+            this.DrawAllImg();
         }
     },
 

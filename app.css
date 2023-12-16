@@ -16,12 +16,6 @@ body {
     overflow: hidden;
 }
 
-#mid-container::after {
-    content: "";
-    display: table;
-    clear: both;
-}
-
 #palette {
     width: 10em;
     padding-top: 1em;
@@ -37,7 +31,7 @@ body {
     margin: 0;
 }
 
-#preview {
+#preview, #all {
     border: 1px solid #B7B7B7;
 }
 
@@ -70,4 +64,5 @@ body {
 
 #footer {
     clear: both;
+    text-align: center;
 }
