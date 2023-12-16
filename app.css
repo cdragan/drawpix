@@ -29,6 +29,7 @@ body {
 
 #image {
     margin: 0;
+    background-image: url("checkerboard.png");
 }
 
 #preview, #all {
