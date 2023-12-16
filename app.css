@@ -10,16 +10,26 @@ body {
     margin-bottom: 3em;
 }
 
-#palette, #image-container, #preview-container {
-    float: left;
+#mid-container {
+    width: 100%;
+    margin: 0 auto;
+    overflow: hidden;
+}
+
+#mid-container::after {
+    content: "";
+    display: table;
+    clear: both;
 }
 
 #palette {
     width: 10em;
+    padding-top: 1em;
+    float: left;
 }
 
 #image-container {
-    width: 70%;
+    margin-left: 10em;
     padding: 0;
 }
 
@@ -29,6 +39,11 @@ body {
 
 #preview {
     border: 1px solid #B7B7B7;
+}
+
+#preview-container {
+    text-align: center;
+    float: right;
 }
 
 #palette > div {

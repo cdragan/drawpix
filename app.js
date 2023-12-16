@@ -222,6 +222,10 @@ Editor.prototype = {
             // TODO update undo stack
         }
 
+        const preview_cont_width = new_width + 10;
+        E("preview-container").setAttr("style", "width: " + preview_cont_width + "px");
+        E("image-container").elem.style.marginRight = preview_cont_width + "px";
+
         this.ResizeImages(new_width, new_height, new_count);
 
         this.DrawPalette();
@@ -236,6 +240,7 @@ Editor.prototype = {
         const width  = Math.floor(elem.elem.offsetWidth);
         const height = Math.floor(width * this.img_height / this.img_width);
         elem.elem.style.height = height + "px";
+
         this.elem.setAttr("width", width);
         this.elem.setAttr("height", height);
         this.elem.setAttr("viewbox", "0 0 " + width + " " + height);
