@@ -250,6 +250,8 @@ Editor.prototype = {
         const img_width  = this.img_width;
         const img_height = this.img_height;
 
+        const old_color = this.palette.length ? this.palette[this.cur_color] : "FFFFFFFF";
+
         if ( ! this.palette.length || clear) {
             this.palette = ["00000000"];
         }
@@ -267,6 +269,18 @@ Editor.prototype = {
                 }
             }
         }
+
+        if (this.palette.length == 1) {
+            this.palette.push("FFFFFFFF");
+        }
+
+        let i;
+        for (i = 0; i < this.palette.length; i++) {
+            if (this.palette[i] === old_color) {
+                break;
+            }
+        }
+        this.cur_color = (i < this.palette.length) ? i : 1;
     },
 
     DrawPalette: function()
@@ -326,13 +340,15 @@ Editor.prototype = {
             }
         }
 
+        const color = this.palette[this.cur_color];
+
         for (let i = 0; i < this.sel_bg.length; i++) {
             svg.BeginGroup("sel-bg-" + i);
             svg.Rect("", "sel-bg", 0, 0, cell_width + pad_size, pad_size);
             svg.Rect("", "sel-bg", 0, cell_height, cell_width + pad_size, pad_size);
             svg.Rect("", "sel-bg", 0, pad_size, pad_size, cell_height - pad_size);
             svg.Rect("", "sel-bg", cell_width, pad_size, pad_size, cell_height - pad_size);
-            svg.Rect("sel-fg-" + i, "#000000", pad_size, pad_size, cell_width - pad_size, cell_height - pad_size);
+            svg.Rect("sel-fg-" + i, "#" + color, pad_size, pad_size, cell_width - pad_size, cell_height - pad_size);
             svg.EndGroup();
         }
 
@@ -482,12 +498,21 @@ Editor.prototype = {
         }
     },
 
+    UpdateSelCursor: function()
+    {
+        const color = this.palette[this.cur_color];
+        for (let i = 0; i < this.sel_fg.length; i++) {
+            this.sel_fg[i].setAttr("style", "fill: #" + color);
+        }
+    },
+
     SelectColor: function(i)
     {
         if (i !== this.cur_color) {
             E("palette-label-" + this.cur_color).setAttr("class", "palette-color");
             E("palette-label-" + i).setAttr("class", "palette-selected-color");
             this.cur_color = i;
+            this.UpdateSelCursor();
         }
     },
 
@@ -511,6 +536,8 @@ Editor.prototype = {
         this.palette[i] = new_color;
 
         E("palette-label-" + i).elem.style = "background-color: #" + new_color;
+
+        this.UpdateSelCursor();
 
         const img_width  = this.img_width;
         const img_height = this.img_height;
@@ -543,6 +570,8 @@ Editor.prototype = {
     AddColorToPalette: function()
     {
         this.palette.push("FFFFFFFF");
+        this.cur_color = this.palette.length - 1;
+        this.UpdateSelCursor();
         this.DrawPalette();
     },
 
