@@ -452,12 +452,23 @@ Editor.prototype = {
         ed_elem.setAttr("style", "fill: #" + color);
 
         let ctx = this.preview_canvas.getContext("2d");
-        ctx.fillStyle = "#" + color;
-        ctx.fillRect(x, y, 1, 1);
+        if (color.slice(6) !== "FF") {
+            ctx.clearRect(x, y, 1, 1);
+        }
+        if (color !== "00000000") {
+            ctx.fillStyle = "#" + color;
+            ctx.fillRect(x, y, 1, 1);
+        }
 
         ctx = this.all_img_canvas.getContext("2d");
-        ctx.fillStyle = "#" + color;
-        ctx.fillRect(x + this.cur_image * this.img_width, y, 1, 1);
+        const all_x = x + this.cur_image * this.img_width;
+        if (color.slice(6) !== "FF") {
+            ctx.clearRect(all_x, y, 1, 1);
+        }
+        if (color !== "00000000") {
+            ctx.fillStyle = "#" + color;
+            ctx.fillRect(all_x, y, 1, 1);
+        }
 
         return old_color;
     },
