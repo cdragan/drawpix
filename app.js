@@ -28,46 +28,6 @@ function OnPageLoad()
     window.addEventListener("resize", function() { editor.UpdateWindowSize(); });
 }
 
-function OnUpdateDimensions()
-{
-    editor.UpdateDimensions();
-}
-
-function OnMouseMove(e)
-{
-    editor.OnMouseMove(e.clientX, e.clientY);
-}
-
-function OnMouseClick(e)
-{
-    editor.OnMouseClick(e.clientX, e.clientY);
-}
-
-function OnImageSelect(e)
-{
-    editor.OnImageSelect(e.clientX, e.clientY);
-}
-
-function SelectColor(i)
-{
-    editor.SelectColor(i);
-}
-
-function ChangePalette(i)
-{
-    editor.ChangePalette(i);
-}
-
-function AddColorToPalette()
-{
-    editor.AddColorToPalette();
-}
-
-function OptimizePalette()
-{
-    editor.OptimizePalette();
-}
-
 function Elem(id)
 {
     this.elem = (typeof id === "string") ? document.getElementById(id) : id;
@@ -306,15 +266,15 @@ Editor.prototype = {
             let color = this.palette[i];
 
             contents += '<div><label class="palette-color" id="palette-label-' + i + '" ' +
-                        'onclick="SelectColor(' + i + ')" ' +
+                        'onclick="editor.SelectColor(' + i + ')" ' +
                         'style="background-color: #' + color + '">' +
                         '<input type="text" id="palette-' + i + '" size="9" maxLength="8" value="' + color + '" ' +
-                        'onkeyup="ChangePalette(' + i + ')">' +
+                        'onkeyup="editor.ChangePalette(' + i + ')">' +
                         '</label></div>';
         }
 
-        contents += '<div style="margin-bottom: 0"><button onclick="AddColorToPalette()">Add Color</button></div>';
-        contents += '<div><button onclick="OptimizePalette()">Optimize</button></div>';
+        contents += '<div style="margin-bottom: 0"><button onclick="editor.AddColorToPalette()">Add Color</button></div>';
+        contents += '<div><button onclick="editor.OptimizePalette()">Optimize</button></div>';
 
         E("palette").setContents(contents);
 
@@ -515,8 +475,11 @@ Editor.prototype = {
         return { x: x, y: y, visible: visible };
     },
 
-    OnMouseMove: function(client_x, client_y)
+    OnMouseMove: function(e)
     {
+        const client_x = e.clientX;
+        const client_y = e.clientY;
+
         this.UpdateMode();
 
         const sel = this.GetSelectedCell(client_x, client_y);
@@ -538,8 +501,11 @@ Editor.prototype = {
         }
     },
 
-    OnMouseClick: function(client_x, client_y)
+    OnMouseClick: function(e)
     {
+        const client_x = e.clientX;
+        const client_y = e.clientY;
+
         this.UpdateMode();
 
         const sel = this.GetSelectedCell(client_x, client_y);
@@ -575,8 +541,11 @@ Editor.prototype = {
         this.UpdateAllImages();
     },
 
-    OnImageSelect: function(client_x, client_y)
+    OnImageSelect: function(e)
     {
+        const client_x = e.clientX;
+        const client_y = e.clientY;
+
         const rect = this.all_img.elem.getBoundingClientRect();
         const img  = Math.floor((client_x - rect.x) / this.img_width);
 
