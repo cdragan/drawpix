@@ -516,6 +516,7 @@ Editor.prototype = {
             name:      "Set Pixel",
             image:     this.cur_image,
             new_color: color,
+            palette:   false,
             pixels:    []
         };
 
@@ -620,26 +621,39 @@ Editor.prototype = {
         const img_height = this.img_height;
         let   changed    = false;
 
+        const undo_action = {
+            name:      "Change Color",
+            image:     this.cur_image,
+            new_color: new_color,
+            palette:   true,
+            pixels:    []
+        };
+
         const img = this.images[this.cur_image];
         for (let y = 0; y < img_height; y++) {
             for (let x = 0; x < img_width; x++) {
-                let cur_color = img[y * img_width + x];
+                let img_offs = y * img_width + x;
+
+                let cur_color = img[img_offs];
                 if (cur_color.length === 6) {
                     cur_color += "FF";
                 }
 
                 if (old_color === cur_color) {
-                    if ( ! changed) {
-                        // TODO update undo stack
-                    }
+                    undo_action.pixels.push({
+                        x:         x,
+                        y:         y,
+                        old_color: old_color
+                    });
 
-                    img[y * img_width + x] = new_color;
+                    img[img_offs] = new_color;
                     changed = true;
                 }
             }
         }
 
         if (changed) {
+            this.undo.push(undo_action);
             this.DrawEditor();
             this.DrawPreview();
             this.DrawAllImg();
@@ -657,6 +671,7 @@ Editor.prototype = {
     OptimizePalette: function()
     {
         this.RebuildPalette(true);
+        this.UpdateSelCursor();
         this.DrawPalette();
     },
 
@@ -682,6 +697,10 @@ Editor.prototype = {
 
             this.UpdatePreviewImage();
             this.UpdateAllImages();
+
+            if (action.palette) {
+                this.OptimizePalette();
+            }
         }
     }
 };
