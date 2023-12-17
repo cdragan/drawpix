@@ -501,6 +501,14 @@ Editor.prototype = {
         }
     },
 
+    OnMouseLeave: function()
+    {
+        for (let i = 0; i < this.sel_bg.length; i++) {
+            this.sel_bg[i].setAttr("visibility", "hidden");
+            this.sel_fg[i].setAttr("visibility", "hidden");
+        }
+    },
+
     OnMouseClick: function(e)
     {
         const client_x = e.clientX;
