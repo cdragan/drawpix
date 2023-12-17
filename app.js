@@ -586,9 +586,9 @@ Editor.prototype = {
         }
     },
 
-    ChangePalette: function(i)
+    ChangePalette: function(pal_idx)
     {
-        let new_color = E("palette-" + i).elem.value;
+        let new_color = E("palette-" + pal_idx).elem.value;
         if ( ! /^[A-Fa-f0-9]*$/.test(new_color)) {
             return;
         }
@@ -599,15 +599,22 @@ Editor.prototype = {
 
         new_color = new_color.toUpperCase();
 
-        const old_color = this.palette[i];
+        const old_color = this.palette[pal_idx];
         if (old_color === new_color) {
             return;
         }
-        this.palette[i] = new_color;
+        this.palette[pal_idx] = new_color;
 
-        E("palette-label-" + i).elem.style = "background-color: #" + new_color;
+        E("palette-label-" + pal_idx).elem.style = "background-color: #" + new_color;
 
         this.UpdateSelCursor();
+
+        // If another color in the palette was the same, don't modify the image
+        for (let i = 0; i < this.palette.length; i++) {
+            if (i !== pal_idx && this.palette[i] === old_color) {
+                return;
+            }
+        }
 
         const img_width  = this.img_width;
         const img_height = this.img_height;
