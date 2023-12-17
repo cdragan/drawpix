@@ -157,6 +157,7 @@ function Editor(editor_id, preview_id, all_id)
     this.sel_bg         = [null, null, null, null];
     this.sel_fg         = [null, null, null, null];
     this.undo           = [];
+    this.redo           = [];
     this.palette        = [];
     this.cur_color      = 0;
     this.images         = [];
@@ -443,7 +444,9 @@ Editor.prototype = {
     SetColor: function(x, y, color)
     {
         let img = this.images[this.cur_image];
-        img[y * this.img_width + x] = color;
+        const img_offs = y * this.img_width + x;
+        const old_color = img[img_offs];
+        img[img_offs] = color;
 
         let ed_elem = E("ed-" + x + "-" + y);
         ed_elem.setAttr("style", "fill: #" + color);
@@ -451,14 +454,12 @@ Editor.prototype = {
         let ctx = this.preview_canvas.getContext("2d");
         ctx.fillStyle = "#" + color;
         ctx.fillRect(x, y, 1, 1);
-        this.UpdatePreviewImage();
 
         ctx = this.all_img_canvas.getContext("2d");
         ctx.fillStyle = "#" + color;
         ctx.fillRect(x + this.cur_image * this.img_width, y, 1, 1);
-        this.UpdateAllImages();
 
-        // TODO add op to undo stack
+        return old_color;
     },
 
     GetSelectedCell: function(client_x, client_y)
@@ -521,6 +522,7 @@ Editor.prototype = {
             }
             else {
                 this.sel_bg[i].setAttr("visibility", "hidden");
+                this.sel_fg[i].setAttr("visibility", "hidden");
             }
         }
     },
@@ -531,9 +533,13 @@ Editor.prototype = {
 
         const sel = this.GetSelectedCell(client_x, client_y);
 
-        // TODO update undo stack
-
         const color = this.palette[this.cur_color];
+
+        const undo_action = {
+            name:      "Set Pixel",
+            new_color: color,
+            pixels:    []
+        };
 
         for (let i = 0; i < this.sel_bg.length; i++) {
             let cell = this.GetCellIndex(i, sel.x, sel.y);
@@ -542,8 +548,20 @@ Editor.prototype = {
                 continue;
             }
 
-            this.SetColor(cell.x, cell.y, color);
+            let old_color = this.SetColor(cell.x, cell.y, color);
+
+            undo_action.pixels.push({
+                x:         cell.x,
+                y:         cell.y,
+                old_color: old_color
+            });
         }
+
+        this.undo.push(undo_action);
+        this.redo = [];
+
+        this.UpdatePreviewImage();
+        this.UpdateAllImages();
     },
 
     OnImageSelect: function(client_x, client_y)
@@ -647,5 +665,26 @@ Editor.prototype = {
     {
         this.RebuildPalette(true);
         this.DrawPalette();
+    },
+
+    Undo: function()
+    {
+        if (this.undo.length === 0) {
+            return;
+        }
+
+        const action = this.undo.pop();
+        this.redo.push(action);
+
+        if ("pixels" in action) {
+            const pixels = action.pixels;
+            for (let i = 0; i < pixels.length; i++) {
+                let pixel = pixels[i];
+                this.SetColor(pixel.x, pixel.y, pixel.old_color);
+            }
+
+            this.UpdatePreviewImage();
+            this.UpdateAllImages();
+        }
     }
 };
