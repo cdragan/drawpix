@@ -514,6 +514,7 @@ Editor.prototype = {
 
         const undo_action = {
             name:      "Set Pixel",
+            image:     this.cur_image,
             new_color: color,
             pixels:    []
         };
@@ -553,6 +554,11 @@ Editor.prototype = {
             return;
         }
 
+        this.SelectImage(img);
+    },
+
+    SelectImage: function(img)
+    {
         this.cur_image = img;
 
         this.DrawEditor();
@@ -655,6 +661,10 @@ Editor.prototype = {
 
         const action = this.undo.pop();
         this.redo.push(action);
+
+        if (action.image !== this.cur_image) {
+            this.SelectImage(action.image);
+        }
 
         if ("pixels" in action) {
             const pixels = action.pixels;
