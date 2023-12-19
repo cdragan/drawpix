@@ -13,7 +13,8 @@
             <label>Width  <input type="text" id="img_width"  title="Width of one image in pixels"  value="24" size="3" maxLength="3"></label>
             <label>Height <input type="text" id="img_height" title="Height of one image in pixels" value="24" size="3" maxLength="3"></label>
             <Label>Images <input type="text" id="img_count"  title="Number of images"              value="8"  size="3" maxLength="3"></label>
-            <button onclick="editor.OnUpdateDimensions()">Update</button>
+            <button onclick="editor.UpdateDimensions()">Update</button>
+            <input type="file" id="file-input" accept="image/png" onchange="editor.LoadFile()"/>
             <br>
             <button onclick="editor.Undo()">Undo</button>
             <label>Mirror X<input type="checkbox" id="mirror_x"></label>

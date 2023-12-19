@@ -104,6 +104,14 @@ function GetDimension(id)
     return (isNaN(value) || (value < 1) || (value > max_dim)) ? null : value;
 }
 
+function GetComponentValue(v)
+{
+    const text = v.toString(16);
+    if (v < 16)
+        return "0" + text;
+    return text;
+}
+
 function Editor(editor_id, preview_id, all_id)
 {
     this.elem           = E(editor_id);
@@ -708,6 +716,87 @@ Editor.prototype = {
 
             if (action.palette) {
                 this.OptimizePalette();
+            }
+        }
+    },
+
+    LoadFile: function()
+    {
+        const file_input = E("file-input").elem;
+
+        if ( ! file_input.files || ! file_input.files[0]) {
+            return;
+        }
+
+        const reader = new FileReader();
+
+        reader.onload = function(e) {
+            const load_img = new Image();
+
+            load_img.onload = function() {
+                editor.LoadImage(load_img);
+            };
+
+            load_img.src = e.target.result;
+        };
+
+        reader.readAsDataURL(file_input.files[0]);
+    },
+
+    LoadImage: function(img)
+    {
+        const orig_width = img.naturalWidth;
+        const new_height = img.naturalHeight;
+
+        let new_width = new_height;
+        let new_count = Math.floor(orig_width / new_width);
+
+        // TODO handle odd cases
+
+        E("img_width").elem.value  = new_width;
+        E("img_height").elem.value = new_height;
+        E("img_count").elem.value  = new_count;
+
+        this.cur_image = 0;
+
+        this.ResizeImages(new_width, new_height, new_count);
+
+        this.GetImageData(img);
+
+        this.undo = [];
+        this.redo = [];
+
+        this.DrawEditor();
+        this.DrawPreview();
+        this.DrawAllImg();
+        this.OptimizePalette();
+    },
+
+    GetImageData: function(img)
+    {
+        const img_width  = this.img_width;
+        const img_height = this.img_height;
+        const img_count  = this.img_count;
+
+        const tmpCanvas  = document.createElement("canvas");
+        tmpCanvas.width  = img_width * img_count;
+        tmpCanvas.height = img_height;
+
+        const ctx = tmpCanvas.getContext("2d", { willReadFrequently: true });
+
+        ctx.drawImage(img, 0, 0, img_width * img_count, img_height);
+
+        for (let y = 0; y < img_height; y++) {
+            let line_offs = y * img_width;
+            for (let i = 0; i < img_count; i++) {
+                for (let x = 0; x < img_width; x++) {
+                    let value = ctx.getImageData(i * img_width + x, y, 1, 1).data;
+                    let color = "";
+                    for (let c = 0; c < 4; c++) {
+                        color += GetComponentValue(value[c]);
+                    }
+                    this.images[i][line_offs + x] = color.toUpperCase();
+                }
             }
         }
     }
