@@ -132,6 +132,7 @@ function Editor(editor_id, preview_id, all_id)
     this.cur_image      = 0;
     this.preview_canvas = document.createElement("canvas");
     this.all_img_canvas = document.createElement("canvas");
+    this.mouse_down     = false;
 }
 
 Editor.prototype = {
@@ -414,6 +415,10 @@ Editor.prototype = {
         let img = this.images[this.cur_image];
         const img_offs = y * this.img_width + x;
         const old_color = img[img_offs];
+        if (old_color === color) {
+            return old_color;
+        }
+
         img[img_offs] = color;
 
         let ed_elem = E("ed-" + x + "-" + y);
@@ -507,14 +512,31 @@ Editor.prototype = {
                 this.sel_fg[i].setAttr("visibility", "hidden");
             }
         }
+
+        if (this.mouse_down) {
+            this.OnMouseClick(e);
+        }
     },
 
     OnMouseLeave: function()
     {
+        this.mouse_down = false;
+
         for (let i = 0; i < this.sel_bg.length; i++) {
             this.sel_bg[i].setAttr("visibility", "hidden");
             this.sel_fg[i].setAttr("visibility", "hidden");
         }
+    },
+
+    OnMouseDown: function(e)
+    {
+        this.mouse_down = true;
+        this.OnMouseClick(e);
+    },
+
+    OnMouseUp: function(e)
+    {
+        this.mouse_down = false;
     },
 
     OnMouseClick: function(e)
@@ -536,6 +558,8 @@ Editor.prototype = {
             pixels:    []
         };
 
+        let num_changed = 0;
+
         for (let i = 0; i < this.sel_bg.length; i++) {
             let cell = this.GetCellIndex(i, sel.x, sel.y);
 
@@ -545,11 +569,19 @@ Editor.prototype = {
 
             let old_color = this.SetColor(cell.x, cell.y, color);
 
-            undo_action.pixels.push({
-                x:         cell.x,
-                y:         cell.y,
-                old_color: old_color
-            });
+            if (old_color !== color) {
+                ++num_changed;
+
+                undo_action.pixels.push({
+                    x:         cell.x,
+                    y:         cell.y,
+                    old_color: old_color
+                });
+            }
+        }
+
+        if ( ! num_changed) {
+            return;
         }
 
         this.undo.push(undo_action);
@@ -751,7 +783,9 @@ Editor.prototype = {
         let new_width = new_height;
         let new_count = Math.floor(orig_width / new_width);
 
-        // TODO handle odd cases
+        if (new_count * new_width !== orig_width) {
+            // TODO
+        }
 
         E("img_width").elem.value  = new_width;
         E("img_height").elem.value = new_height;
