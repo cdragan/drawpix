@@ -15,6 +15,7 @@
             <Label>Images <input type="text" id="img_count"  title="Number of images"              value="8"  size="3" maxLength="3"></label>
             <button onclick="editor.UpdateDimensions()">Update</button>
             <input type="file" id="file-input" accept="image/png" onchange="editor.LoadFile()"/>
+            <button onclick="editor.SaveFile()">Save</button>
             <br>
             <button onclick="editor.Undo()">Undo</button>
             <label>Mirror X<input type="checkbox" id="mirror_x"></label>

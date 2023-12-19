@@ -799,5 +799,13 @@ Editor.prototype = {
                 }
             }
         }
+    },
+
+    SaveFile: function()
+    {
+        const link = document.createElement("a");
+        link.href = this.all_img_canvas.toDataURL("image/png");
+        link.download = "image.png";
+        link.click();
     }
 };
