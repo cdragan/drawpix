@@ -46,12 +46,12 @@ body {
 }
 
 .palette-color {
-    padding: 0.8ex 0.5ex 0.8ex 2em;
+    padding: 1em;
     border: 1px solid black;
 }
 
 .palette-selected-color {
-    padding: 0.8ex 0.5ex 0.8ex 2em;
+    padding: 1em;
     border: 4px solid black;
 }
 

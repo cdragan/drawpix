@@ -273,11 +273,16 @@ Editor.prototype = {
 
         for (let i = 0; i < this.palette.length; i++) {
             let color = this.palette[i];
+            let rgb   = color.slice(0, 6);
+            let alpha = color.slice(6);
 
             contents += '<div><label class="palette-color" id="palette-label-' + i + '" ' +
                         'onclick="editor.SelectColor(' + i + ')" ' +
                         'style="background-color: #' + color + '">' +
-                        '<input type="text" id="palette-' + i + '" size="9" maxLength="8" value="' + color + '" ' +
+                        '<input type="color" id="palette-rgb-' + i + '" value="#' + rgb + '" ' +
+                        'oninput="editor.ChangePalette(' + i + ')" ' +
+                        'onchange="editor.ChangePalette(' + i + ')">' +
+                        '<input type="text" id="palette-alpha-' + i + '" size="3" maxLength="2" value="' + alpha + '" ' +
                         'onkeyup="editor.ChangePalette(' + i + ')">' +
                         '</label></div>';
         }
@@ -637,10 +642,14 @@ Editor.prototype = {
 
     ChangePalette: function(pal_idx)
     {
-        let new_color = E("palette-" + pal_idx).elem.value;
-        if ( ! /^[A-Fa-f0-9]*$/.test(new_color)) {
+        let new_rgb = E("palette-rgb-" + pal_idx).elem.value;
+
+        let new_alpha = E("palette-alpha-" + pal_idx).elem.value;
+        if ( ! /^[A-Fa-f0-9]*$/.test(new_alpha)) {
             return;
         }
+
+        let new_color = new_rgb.slice(1) + new_alpha;
 
         while (new_color.length < 8) {
             new_color += (new_color.length < 6) ? "0" : "F";
