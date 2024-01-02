@@ -213,9 +213,15 @@ Editor.prototype = {
     UpdateWindowSize: function()
     {
         // Set height of image-container and image to match the width
-        const elem = E("image-container");
-        const width  = Math.floor(elem.elem.offsetWidth);
-        const height = Math.floor(width * this.img_height / this.img_width);
+        const elem       = E("image-container");
+        let   width      = Math.floor(elem.elem.offsetWidth);
+        let   height     = Math.floor(width * this.img_height / this.img_width);
+        const win_height = window.innerHeight;
+        if (height > win_height * 0.95) {
+            height = Math.floor(win_height * 0.9);
+            width  = Math.floor(height * this.img_width / this.img_height);
+        }
+
         elem.elem.style.height = height + "px";
 
         this.elem.setAttr("width", width);
