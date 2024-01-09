@@ -602,6 +602,26 @@ Editor.prototype = {
         this.UpdateAllImages();
     },
 
+    OnKeyDown: function(e)
+    {
+        if (e.target.tagName !== "BODY") {
+            return;
+        }
+
+        switch (e.key) {
+            case "x":
+            case "y":
+                E("mirror_" + e.key).elem.checked = ! E("mirror_" + e.key).elem.checked;
+                break;
+
+            case "z":
+                if (e.metaKey || e.ctrlKey) {
+                    if (!e.shiftKey)
+                        this.Undo();
+                }
+        }
+    },
+
     OnImageSelect: function(e)
     {
         const client_x = e.clientX;

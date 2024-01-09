@@ -8,7 +8,7 @@
         <script src="app.js" type="text/javascript"></script>
         <link href="app.css" rel="stylesheet" type="text/css" />
     </head>
-    <body onload="OnPageLoad();">
+    <body onload="OnPageLoad();" onkeydown="editor.OnKeyDown(event);">
         <div id="toolbar">
             <label>Width  <input type="text" id="img_width"  title="Width of one image in pixels"  value="24" size="3" maxLength="3"></label>
             <label>Height <input type="text" id="img_height" title="Height of one image in pixels" value="24" size="3" maxLength="3"></label>
