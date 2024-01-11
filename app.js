@@ -246,25 +246,27 @@ Editor.prototype = {
             this.palette = ["00000000"];
         }
 
-        const img = this.images[this.cur_image];
-        for (let y = 0; y < img_height; y++) {
-            for (let x = 0; x < img_width; x++) {
-                let color = img[y * img_width + x];
-                if (color.length === 6) {
-                    color += "FF";
-                }
+        let i;
+        for (i = 0; i < this.images.length; i++) {
+            const img = this.images[i];
+            for (let y = 0; y < img_height; y++) {
+                for (let x = 0; x < img_width; x++) {
+                    let color = img[y * img_width + x];
+                    if (color.length === 6) {
+                        color += "FF";
+                    }
 
-                if (this.palette.indexOf(color) === -1) {
-                    this.palette.push(color);
+                    if (this.palette.indexOf(color) === -1) {
+                        this.palette.push(color);
+                    }
                 }
             }
         }
 
-        if (this.palette.length == 1) {
+        if (this.palette.length === 1) {
             this.palette.push("FFFFFFFF");
         }
 
-        let i;
         for (i = 0; i < this.palette.length; i++) {
             if (this.palette[i] === old_color) {
                 break;
@@ -694,15 +696,17 @@ Editor.prototype = {
         this.UpdateSelCursor();
 
         // If another color in the palette was the same, don't modify the image
-        for (let i = 0; i < this.palette.length; i++) {
+        let i;
+        for (i = 0; i < this.palette.length; i++) {
             if (i !== pal_idx && this.palette[i] === old_color) {
                 return;
             }
         }
 
-        const img_width  = this.img_width;
-        const img_height = this.img_height;
-        let   changed    = false;
+        const img_width   = this.img_width;
+        const img_height  = this.img_height;
+        let   changed     = false;
+        let   need_redraw = false;
 
         const undo_action = {
             name:      "Change Color",
@@ -712,33 +716,40 @@ Editor.prototype = {
             pixels:    []
         };
 
-        const img = this.images[this.cur_image];
-        for (let y = 0; y < img_height; y++) {
-            for (let x = 0; x < img_width; x++) {
-                let img_offs = y * img_width + x;
+        for (i = 0; i < this.images.length; i++) {
+            const img = this.images[i];
+            for (let y = 0; y < img_height; y++) {
+                for (let x = 0; x < img_width; x++) {
+                    let img_offs = y * img_width + x;
 
-                let cur_color = img[img_offs];
-                if (cur_color.length === 6) {
-                    cur_color += "FF";
-                }
+                    let cur_color = img[img_offs];
+                    if (cur_color.length === 6) {
+                        cur_color += "FF";
+                    }
 
-                if (old_color === cur_color) {
-                    undo_action.pixels.push({
-                        x:         x,
-                        y:         y,
-                        old_color: old_color
-                    });
+                    if (old_color === cur_color) {
+                        undo_action.pixels.push({
+                            img:       i,
+                            x:         x,
+                            y:         y,
+                            old_color: old_color
+                        });
 
-                    img[img_offs] = new_color;
-                    changed = true;
+                        img[img_offs] = new_color;
+                        changed = true;
+                        if (i === this.cur_image)
+                            need_redraw = true;
+                    }
                 }
             }
         }
 
         if (changed) {
             this.undo.push(undo_action);
-            this.DrawEditor();
-            this.DrawPreview();
+            if (need_redraw) {
+                this.DrawEditor();
+                this.DrawPreview();
+            }
             this.DrawAllImg();
         }
     },
