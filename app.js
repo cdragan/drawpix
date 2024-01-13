@@ -132,7 +132,7 @@ function Editor(editor_id, preview_id, all_id)
     this.cur_image      = 0;
     this.preview_canvas = document.createElement("canvas");
     this.all_img_canvas = document.createElement("canvas");
-    this.mouse_down     = false;
+    this.mouse_down     = null;
 }
 
 Editor.prototype = {
@@ -515,8 +515,11 @@ Editor.prototype = {
         return num_changed;
     },
 
-    GetSelectedCell: function(client_x, client_y)
+    GetSelectedCell: function(e)
     {
+        const client_x = e.clientX;
+        const client_y = e.clientY;
+
         const rect = this.elem.elem.getBoundingClientRect();
         const x    = Math.floor((client_x - rect.x) / this.cell_width);
         const y    = Math.floor((client_y - rect.y) / this.cell_height);
@@ -557,14 +560,19 @@ Editor.prototype = {
         return { x: x, y: y, visible: visible };
     },
 
+    HideSelector: function()
+    {
+        for (let i = 0; i < this.sel_bg.length; i++) {
+            this.sel_bg[i].setAttr("visibility", "hidden");
+            this.sel_fg[i].setAttr("visibility", "hidden");
+        }
+    },
+
     OnMouseMove: function(e)
     {
-        const client_x = e.clientX;
-        const client_y = e.clientY;
-
         this.UpdateMode();
 
-        const sel = this.GetSelectedCell(client_x, client_y);
+        const sel = this.GetSelectedCell(e);
 
         for (let i = 0; i < this.sel_bg.length; i++) {
             let cell = this.GetCellIndex(i, sel.x, sel.y);
@@ -589,36 +597,30 @@ Editor.prototype = {
 
     OnMouseLeave: function()
     {
-        this.mouse_down = false;
-
-        for (let i = 0; i < this.sel_bg.length; i++) {
-            this.sel_bg[i].setAttr("visibility", "hidden");
-            this.sel_fg[i].setAttr("visibility", "hidden");
-        }
+        this.UpdateMode();
+        this.mouse_down = null;
+        this.HideSelector();
     },
 
     OnMouseDown: function(e)
     {
-        this.mouse_down = true;
+        this.UpdateMode();
+        this.mouse_down = this.GetSelectedCell(e);
         this.OnMouseClick(e);
     },
 
     OnMouseUp: function(e)
     {
-        this.mouse_down = false;
+        this.UpdateMode();
+        this.mouse_down = null;
     },
 
     OnMouseClick: function(e)
     {
-        const client_x = e.clientX;
-        const client_y = e.clientY;
-
-        this.UpdateMode();
-
         if (this.mode !== "draw" && this.mode !== "fill")
-            return; // TODO
+            return;
 
-        const sel = this.GetSelectedCell(client_x, client_y);
+        const sel = this.GetSelectedCell(e);
 
         const color = this.palette[this.cur_color];
 
