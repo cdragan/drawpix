@@ -421,6 +421,16 @@ Editor.prototype = {
     {
         this.mirror_x = E("mirror_x").elem.checked;
         this.mirror_y = E("mirror_y").elem.checked;
+
+        this.mode = E("mode_draw").elem.checked ? "draw" :
+                    E("mode_fill").elem.checked ? "fill" :
+                    E("mode_move").elem.checked ? "move" :
+                    null;
+
+        if (this.mode !== "draw") {
+            this.mirror_x = false;
+            this.mirror_y = false;
+        }
     },
 
     SetColor: function(x, y, color)
@@ -457,6 +467,52 @@ Editor.prototype = {
         }
 
         return old_color;
+    },
+
+    Fill: function(x, y, color, undo_pixels)
+    {
+        let img = this.images[this.cur_image];
+
+        let img_offs = y * this.img_width + x;
+        const old_color = img[img_offs];
+
+        if (old_color === color)
+            return 0;
+
+        let num_changed = 0;
+
+        const to_check = [ [x, y] ];
+
+        while (to_check.length > 0) {
+            let xy = to_check.pop();
+            x = xy[0];
+            y = xy[1];
+
+            if (img[y * this.img_width + x] !== old_color)
+                continue;
+
+            if (x > 0)
+                to_check.push([x - 1, y]);
+            if (x + 1 < this.img_width)
+                to_check.push([x + 1, y]);
+            if (y > 0)
+                to_check.push([x, y - 1]);
+            if (y + 1 < this.img_height)
+                to_check.push([x, y + 1]);
+
+            ++num_changed;
+
+            undo_pixels.push({
+                image:     this.cur_image,
+                x:         x,
+                y:         y,
+                old_color: old_color
+            });
+
+            this.SetColor(x, y, color);
+        }
+
+        return num_changed;
     },
 
     GetSelectedCell: function(client_x, client_y)
@@ -559,12 +615,15 @@ Editor.prototype = {
 
         this.UpdateMode();
 
+        if (this.mode !== "draw" && this.mode !== "fill")
+            return; // TODO
+
         const sel = this.GetSelectedCell(client_x, client_y);
 
         const color = this.palette[this.cur_color];
 
         const undo_action = {
-            name:      "Set Pixel",
+            name:      this.mode === "draw" ? "Set Pixel" : "Fill",
             new_color: color,
             palette:   false,
             pixels:    []
@@ -579,17 +638,23 @@ Editor.prototype = {
                 continue;
             }
 
-            let old_color = this.SetColor(cell.x, cell.y, color);
+            if (this.mode === "draw") {
 
-            if (old_color !== color) {
-                ++num_changed;
+                let old_color = this.SetColor(cell.x, cell.y, color);
 
-                undo_action.pixels.push({
-                    image:     this.cur_image,
-                    x:         cell.x,
-                    y:         cell.y,
-                    old_color: old_color
-                });
+                if (old_color !== color) {
+                    ++num_changed;
+
+                    undo_action.pixels.push({
+                        image:     this.cur_image,
+                        x:         cell.x,
+                        y:         cell.y,
+                        old_color: old_color
+                    });
+                }
+            }
+            else {
+                num_changed += this.Fill(cell.x, cell.y, color, undo_action.pixels);
             }
         }
 
@@ -772,14 +837,6 @@ Editor.prototype = {
     {
         if (this.undo.length === 0) {
             return;
-        }
-        for (let i = 0; i < this.undo.length; i++) {
-            console.log("Action: " + this.undo[i].name + " " + this.undo[i].new_color);
-            let pixelos = this.undo[i].pixels;
-            for (let j = 0; j < pixelos.length; j++) {
-                let pix = pixelos[j];
-                console.log("    " + pix.image + " [" + pix.x + ", " + pix.y + "] " + pix.old_color);
-            }
         }
 
         const action = this.undo.pop();
