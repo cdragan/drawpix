@@ -133,6 +133,7 @@ function Editor(editor_id, preview_id, all_id)
     this.preview_canvas = document.createElement("canvas");
     this.all_img_canvas = document.createElement("canvas");
     this.mouse_down     = null;
+    this.move_snapshot  = null;
 }
 
 Editor.prototype = {
@@ -422,6 +423,8 @@ Editor.prototype = {
         this.mirror_x = E("mirror_x").elem.checked;
         this.mirror_y = E("mirror_y").elem.checked;
 
+        const old_mode = this.mode;
+
         this.mode = E("mode_draw").elem.checked ? "draw" :
                     E("mode_fill").elem.checked ? "fill" :
                     E("mode_move").elem.checked ? "move" :
@@ -430,6 +433,11 @@ Editor.prototype = {
         if (this.mode !== "draw") {
             this.mirror_x = false;
             this.mirror_y = false;
+        }
+
+        if (old_mode === "move" && this.mode !== "move" && this.mouse_down) {
+            this.CancelMove();
+            this.mouse_down = null;
         }
     },
 
@@ -574,6 +582,13 @@ Editor.prototype = {
 
         const sel = this.GetSelectedCell(e);
 
+        if (this.mode === "move") {
+            if (this.mouse_down) {
+                this.MoveImageTo(sel.x, sel.y);
+            }
+            return;
+        }
+
         for (let i = 0; i < this.sel_bg.length; i++) {
             let cell = this.GetCellIndex(i, sel.x, sel.y);
 
@@ -591,7 +606,7 @@ Editor.prototype = {
         }
 
         if (this.mouse_down) {
-            this.OnMouseClick(e);
+            this.DrawPixel(e);
         }
     },
 
@@ -600,22 +615,24 @@ Editor.prototype = {
         this.UpdateMode();
         this.mouse_down = null;
         this.HideSelector();
+        this.CancelMove();
     },
 
     OnMouseDown: function(e)
     {
         this.UpdateMode();
         this.mouse_down = this.GetSelectedCell(e);
-        this.OnMouseClick(e);
+        this.DrawPixel(e);
     },
 
     OnMouseUp: function(e)
     {
         this.UpdateMode();
         this.mouse_down = null;
+        this.move_snapshot = null;
     },
 
-    OnMouseClick: function(e)
+    DrawPixel: function(e)
     {
         if (this.mode !== "draw" && this.mode !== "fill")
             return;
@@ -669,6 +686,115 @@ Editor.prototype = {
 
         this.UpdatePreviewImage();
         this.UpdateAllImages();
+    },
+
+    MoveImageTo: function(x, y)
+    {
+        const dx = x - this.mouse_down.x;
+        const dy = y - this.mouse_down.y;
+
+        let undo_action = null;
+
+        if ( ! this.move_snapshot) {
+            if (dx === 0 && dy === 0) {
+                return;
+            }
+
+            let img = this.images[this.cur_image].slice();
+
+            this.move_snapshot = img;
+
+            undo_action = {
+                name:      "Move",
+                new_color: null,
+                palette:   false,
+                pixels:    [],
+                redo:      this.redo,
+                delta:     { x: dx, y: dy }
+            };
+
+            for (let y = 0; y < this.img_height; y++) {
+                for (let x = 0; x < this.img_width; x++) {
+                    undo_action.pixels.push({
+                        image:     this.cur_image,
+                        x:         x,
+                        y:         y,
+                        old_color: img[y * this.img_width + x]
+                    });
+                }
+            }
+
+            this.undo.push(undo_action);
+            this.redo = [];
+        }
+        else {
+            undo_action = this.undo[this.undo.length - 1];
+        }
+
+        if (dx === undo_action.delta.x && dy === undo_action.delta.y) {
+            return;
+        }
+
+        undo_action.delta = { x: dx, y: dy };
+
+        let shift    = Math.abs(dy * this.img_width);
+        let new_rows = (new Array(shift)).fill(init_color);
+
+        // Move down
+        if (dy > 0 && dy < this.img_height) {
+            let len = this.move_snapshot.length;
+            this.images[this.cur_image] = new_rows.concat(this.move_snapshot.slice(0, len - shift));
+        }
+        // Move up
+        else if (dy < 0 && dy > -this.img_height) {
+            this.images[this.cur_image] = this.move_snapshot.slice(shift).concat(new_rows);
+        }
+        // Not moving vertically
+        else {
+            this.images[this.cur_image] = this.move_snapshot.slice();
+        }
+
+        if (dx) {
+            shift         = Math.abs(dx);
+            let rem_width = this.img_width - shift;
+            let img       = this.images[this.cur_image];
+
+            for (let y = 0; y < this.img_height; y++) {
+
+                let row_offs = y * this.img_width;
+
+                // Move right
+                if (dx > 0 && dx < this.img_width) {
+                    img.copyWithin(row_offs + shift, row_offs, row_offs + rem_width);
+                    img.fill(init_color, row_offs, row_offs + shift);
+                }
+                // Move left
+                else if (dx < 0 && dx > -this.img_width) {
+                    img.copyWithin(row_offs, row_offs + shift, row_offs + this.img_width);
+                    img.fill(init_color, row_offs + rem_width, row_offs + this.img_width);
+                }
+            }
+        }
+
+        this.DrawEditor();
+        this.DrawPreview();
+        this.DrawAllImg();
+    },
+
+    CancelMove: function()
+    {
+        if ( ! this.move_snapshot)
+            return;
+
+        this.images[this.cur_image] = this.move_snapshot;
+
+        this.move_snapshot = null;
+        const undo_action = this.undo.pop();
+        this.redo = undo_action.redo;
+
+        this.DrawEditor();
+        this.DrawPreview();
+        this.DrawAllImg();
     },
 
     OnKeyDown: function(e)
