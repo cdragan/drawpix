@@ -565,7 +565,6 @@ Editor.prototype = {
 
         const undo_action = {
             name:      "Set Pixel",
-            image:     this.cur_image,
             new_color: color,
             palette:   false,
             pixels:    []
@@ -586,6 +585,7 @@ Editor.prototype = {
                 ++num_changed;
 
                 undo_action.pixels.push({
+                    image:     this.cur_image,
                     x:         cell.x,
                     y:         cell.y,
                     old_color: old_color
@@ -710,7 +710,6 @@ Editor.prototype = {
 
         const undo_action = {
             name:      "Change Color",
-            image:     this.cur_image,
             new_color: new_color,
             palette:   true,
             pixels:    []
@@ -729,7 +728,7 @@ Editor.prototype = {
 
                     if (old_color === cur_color) {
                         undo_action.pixels.push({
-                            img:       i,
+                            image:     i,
                             x:         x,
                             y:         y,
                             old_color: old_color
@@ -774,23 +773,35 @@ Editor.prototype = {
         if (this.undo.length === 0) {
             return;
         }
+        for (let i = 0; i < this.undo.length; i++) {
+            console.log("Action: " + this.undo[i].name + " " + this.undo[i].new_color);
+            let pixelos = this.undo[i].pixels;
+            for (let j = 0; j < pixelos.length; j++) {
+                let pix = pixelos[j];
+                console.log("    " + pix.image + " [" + pix.x + ", " + pix.y + "] " + pix.old_color);
+            }
+        }
 
         const action = this.undo.pop();
         this.redo.push(action);
 
-        if (action.image !== this.cur_image) {
-            this.SelectImage(action.image);
-        }
-
         if ("pixels" in action) {
             const pixels = action.pixels;
+            let cur_changed = false;
             for (let i = 0; i < pixels.length; i++) {
                 let pixel = pixels[i];
-                this.SetColor(pixel.x, pixel.y, pixel.old_color);
+                let i_img = pixel.image;
+                if (i_img === this.cur_image)
+                    cur_changed = true;
+                let img_offs = pixel.y * this.img_width + pixel.x;
+                this.images[i_img][img_offs] = pixel.old_color;
             }
 
-            this.UpdatePreviewImage();
-            this.UpdateAllImages();
+            if (cur_changed) {
+                this.DrawEditor();
+                this.DrawPreview();
+            }
+            this.DrawAllImg();
 
             if (action.palette) {
                 this.OptimizePalette();
