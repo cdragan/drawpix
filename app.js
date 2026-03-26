@@ -152,7 +152,7 @@ Editor.prototype = {
             const new_row_tail = (new_width > this.img_width)
                 ? (new Array(new_width - this.img_width)).fill(init_color) : [];
             const new_tail     = (new_height > this.img_height)
-                ? (new Array(new_width * (new_height - this.img_height))).fill(init_color) : null;
+                ? (new Array(new_width)).fill(init_color) : null;
 
             for (let i = 0; i < this.images.length; i++) {
                 let old_img = this.images[i];
@@ -651,8 +651,9 @@ Editor.prototype = {
 
     GetSelectedCell: function(e)
     {
-        const client_x = e.clientX;
-        const client_y = e.clientY;
+        const touch    = e.touches ? e.touches[0] : e;
+        const client_x = touch.clientX;
+        const client_y = touch.clientY;
 
         const rect = this.elem.elem.getBoundingClientRect();
         const x    = Math.floor((client_x - rect.x) / this.cell_width);
@@ -697,8 +698,10 @@ Editor.prototype = {
     HideSelector: function()
     {
         for (let i = 0; i < this.sel_bg.length; i++) {
-            this.sel_bg[i].setAttr("visibility", "hidden");
-            this.sel_fg[i].setAttr("visibility", "hidden");
+            if (this.sel_bg[i]) {
+                this.sel_bg[i].setAttr("visibility", "hidden");
+                this.sel_fg[i].setAttr("visibility", "hidden");
+            }
         }
     },
 
@@ -983,7 +986,8 @@ Editor.prototype = {
     {
         const color = this.palette[this.cur_color];
         for (let i = 0; i < this.sel_fg.length; i++) {
-            this.sel_fg[i].setAttr("style", "fill: #" + color);
+            if (this.sel_fg[i])
+                this.sel_fg[i].setAttr("style", "fill: #" + color);
         }
     },
 
@@ -1182,9 +1186,7 @@ Editor.prototype = {
         this.redo = [];
 
         this.RebuildFooter();
-        this.DrawEditor();
-        this.DrawPreview();
-        this.DrawAllImg();
+        this.UpdateWindowSize();
         this.OptimizePalette();
     },
 
