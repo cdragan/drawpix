@@ -12,11 +12,6 @@ const max_dim = 256;
 // Initial color, black, completely transparent, format: RRGGBBAA
 const init_color = "00000000";
 
-// Editor modes
-const Mode = {
-    set_color: 1
-};
-
 var editor = null;
 
 function OnPageLoad()
@@ -118,7 +113,7 @@ function Editor(editor_id, preview_id)
     this.preview        = E(preview_id);
     this.img_width      = 0;
     this.img_height     = 0;
-    this.mode           = Mode.set_color;
+    this.mode           = "draw";
     // Multiple selectors for symmetric drawing
     this.sel_bg         = [null, null, null, null];
     this.sel_fg         = [null, null, null, null];
@@ -372,8 +367,11 @@ Editor.prototype = {
         const img = this.images[this.cur_image];
         for (let y = 0; y < img_height; y++) {
             for (let x = 0; x < img_width; x++) {
-                ctx.fillStyle = "#" + img[y * img_width + x];
-                ctx.fillRect(x, y, 1, 1);
+                const color = img[y * img_width + x];
+                if (color.slice(6) !== "00") {
+                    ctx.fillStyle = "#" + color;
+                    ctx.fillRect(x, y, 1, 1);
+                }
             }
         }
 
@@ -394,8 +392,11 @@ Editor.prototype = {
         const img = this.images[i];
         for (let y = 0; y < this.img_height; y++) {
             for (let x = 0; x < this.img_width; x++) {
-                ctx.fillStyle = "#" + img[y * this.img_width + x];
-                ctx.fillRect(x, y, 1, 1);
+                const color = img[y * this.img_width + x];
+                if (color.slice(6) !== "00") {
+                    ctx.fillStyle = "#" + color;
+                    ctx.fillRect(x, y, 1, 1);
+                }
             }
         }
     },
@@ -459,7 +460,12 @@ Editor.prototype = {
             del_btn.textContent = "x";
             del_btn.title = "Delete image";
 
+            const label = document.createElement("span");
+            label.className = "img-tile-label";
+            label.textContent = i + 1;
+
             tile.appendChild(canvas);
+            tile.appendChild(label);
             tile.appendChild(del_btn);
             container.appendChild(tile);
 
@@ -940,7 +946,9 @@ Editor.prototype = {
 
             case "z":
                 if (e.metaKey || e.ctrlKey) {
-                    if (!e.shiftKey)
+                    if (e.shiftKey)
+                        this.Redo();
+                    else
                         this.Undo();
                 }
         }
@@ -1134,6 +1142,74 @@ Editor.prototype = {
         }
     },
 
+    ApplyMoveDelta: function(image_idx, dx, dy)
+    {
+        const snapshot = this.images[image_idx].slice();
+        let shift    = Math.abs(dy * this.img_width);
+        let new_rows = (new Array(shift)).fill(init_color);
+
+        if (dy > 0 && dy < this.img_height) {
+            this.images[image_idx] = new_rows.concat(snapshot.slice(0, snapshot.length - shift));
+        } else if (dy < 0 && dy > -this.img_height) {
+            this.images[image_idx] = snapshot.slice(shift).concat(new_rows);
+        } else {
+            this.images[image_idx] = snapshot.slice();
+        }
+
+        if (dx) {
+            shift = Math.abs(dx);
+            const rem_width = this.img_width - shift;
+            const img = this.images[image_idx];
+            for (let y = 0; y < this.img_height; y++) {
+                const row_offs = y * this.img_width;
+                if (dx > 0 && dx < this.img_width) {
+                    img.copyWithin(row_offs + shift, row_offs, row_offs + rem_width);
+                    img.fill(init_color, row_offs, row_offs + shift);
+                } else if (dx < 0 && dx > -this.img_width) {
+                    img.copyWithin(row_offs, row_offs + shift, row_offs + this.img_width);
+                    img.fill(init_color, row_offs + rem_width, row_offs + this.img_width);
+                }
+            }
+        }
+    },
+
+    Redo: function()
+    {
+        if (this.redo.length === 0) return;
+
+        const action = this.redo.pop();
+        this.undo.push(action);
+
+        if ("pixels" in action) {
+            let cur_changed = false;
+
+            if (action.name === "Move") {
+                const image_idx = action.pixels[0].image;
+                this.ApplyMoveDelta(image_idx, action.delta.x, action.delta.y);
+                cur_changed = (image_idx === this.cur_image);
+            } else {
+                const pixels    = action.pixels;
+                const new_color = action.new_color;
+                for (let i = 0; i < pixels.length; i++) {
+                    const pixel = pixels[i];
+                    if (pixel.image === this.cur_image)
+                        cur_changed = true;
+                    this.images[pixel.image][pixel.y * this.img_width + pixel.x] = new_color;
+                }
+            }
+
+            if (cur_changed) {
+                this.DrawEditor();
+                this.DrawPreview();
+            }
+            this.DrawAllImg();
+
+            if (action.palette) {
+                this.OptimizePalette();
+            }
+        }
+    },
+
     LoadFile: function()
     {
         const file_input = E("file-input").elem;
@@ -1166,7 +1242,9 @@ Editor.prototype = {
         let new_count = Math.floor(orig_width / new_width);
 
         if (new_count * new_width !== orig_width) {
-            // TODO
+            // Not evenly divisible as square sprites - treat as single image
+            new_width = orig_width;
+            new_count = 1;
         }
 
         E("img_width").elem.value  = new_width;
@@ -1204,16 +1282,17 @@ Editor.prototype = {
 
         ctx.drawImage(img, 0, 0, img_width * img_count, img_height);
 
+        const data = ctx.getImageData(0, 0, img_width * img_count, img_height).data;
+
         for (let y = 0; y < img_height; y++) {
-            let line_offs = y * img_width;
             for (let i = 0; i < img_count; i++) {
                 for (let x = 0; x < img_width; x++) {
-                    let value = ctx.getImageData(i * img_width + x, y, 1, 1).data;
+                    const offs = (y * img_width * img_count + i * img_width + x) * 4;
                     let color = "";
                     for (let c = 0; c < 4; c++) {
-                        color += GetComponentValue(value[c]);
+                        color += GetComponentValue(data[offs + c]);
                     }
-                    this.images[i][line_offs + x] = color.toUpperCase();
+                    this.images[i][y * img_width + x] = color.toUpperCase();
                 }
             }
         }
