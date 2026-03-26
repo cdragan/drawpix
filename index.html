@@ -10,19 +10,25 @@
     </head>
     <body onload="OnPageLoad();" onkeydown="editor.OnKeyDown(event);">
         <div id="toolbar">
-            <label>Width  <input type="text" id="img_width"  title="Width of one image in pixels"  value="24" size="3" maxLength="3"></label>
-            <label>Height <input type="text" id="img_height" title="Height of one image in pixels" value="24" size="3" maxLength="3"></label>
-            <Label>Images <input type="text" id="img_count"  title="Number of images"              value="8"  size="3" maxLength="3"></label>
-            <button onclick="editor.UpdateDimensions()">Update</button>
-            <input type="file" id="file-input" accept="image/png" onchange="editor.LoadFile()"/>
+            <span class="tool-group">
+                <label>W <input type="text" id="img_width"  title="Width of one image in pixels"  value="24" size="3" maxLength="3" onchange="editor.UpdateDimensions()"></label>
+                <label>H <input type="text" id="img_height" title="Height of one image in pixels" value="24" size="3" maxLength="3" onchange="editor.UpdateDimensions()"></label>
+            </span>
+            <span class="sep"></span>
+            <input type="file" id="file-input" accept="image/png" onchange="editor.LoadFile()">
+            <button onclick="document.getElementById('file-input').click()">Load</button>
             <button onclick="editor.SaveFile()">Save</button>
-            <br>
+            <span class="sep"></span>
             <button onclick="editor.Undo()">Undo</button>
-            <label>Mirror X<input type="checkbox" id="mirror_x"></label>
-            <label style="margin-right: 5em">Mirror Y<input type="checkbox" id="mirror_y"></label>
-            <label>Draw<input type="radio" id="mode_draw" name="mode" value="draw" checked></label>
-            <label>Fill<input type="radio" id="mode_fill" name="mode" value="fill"></label>
-            <label>Move<input type="radio" id="mode_move" name="mode" value="move"></label>
+            <span class="sep"></span>
+            <label>Mirror X <input type="checkbox" id="mirror_x"></label>
+            <label>Mirror Y <input type="checkbox" id="mirror_y"></label>
+            <span class="sep"></span>
+            <span class="mode-group">
+                <label><input type="radio" id="mode_draw" name="mode" value="draw" checked>Draw</label>
+                <label><input type="radio" id="mode_fill" name="mode" value="fill">Fill</label>
+                <label><input type="radio" id="mode_move" name="mode" value="move">Move</label>
+            </span>
         </div>
         <div id="mid-container">
             <div id="palette">
@@ -44,7 +50,7 @@
             </div>
         </div>
         <div id="footer">
-            <img id="all" alt="All images" title="All images, click to select" onclick="editor.OnImageSelect(event)">
+            <div id="all-images"></div>
         </div>
     </body>
 </html>

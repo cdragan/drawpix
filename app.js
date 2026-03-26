@@ -21,7 +21,7 @@ var editor = null;
 
 function OnPageLoad()
 {
-    editor = new Editor("image", "preview", "all");
+    editor = new Editor("image", "preview");
     editor.RebuildPalette(true);
     editor.UpdateDimensions();
 
@@ -112,14 +112,12 @@ function GetComponentValue(v)
     return text;
 }
 
-function Editor(editor_id, preview_id, all_id)
+function Editor(editor_id, preview_id)
 {
     this.elem           = E(editor_id);
     this.preview        = E(preview_id);
-    this.all_img        = E(all_id);
     this.img_width      = 0;
     this.img_height     = 0;
-    this.img_count      = 0;
     this.mode           = Mode.set_color;
     // Multiple selectors for symmetric drawing
     this.sel_bg         = [null, null, null, null];
@@ -132,6 +130,8 @@ function Editor(editor_id, preview_id, all_id)
     this.cur_image      = 0;
     this.preview_canvas = document.createElement("canvas");
     this.all_img_canvas = document.createElement("canvas");
+    this.img_canvases   = [];
+    this.drag_src       = null;
     this.mouse_down     = null;
     this.move_snapshot  = null;
 }
@@ -181,23 +181,17 @@ Editor.prototype = {
 
         this.img_width  = new_width;
         this.img_height = new_height;
-        this.img_count  = new_count;
     },
 
     UpdateDimensions: function()
     {
         const new_width  = GetDimension("img_width")  || this.img_width;
         const new_height = GetDimension("img_height") || this.img_height;
-        const new_count  = GetDimension("img_count")  || this.img_count;
+        const new_count  = this.images.length || 8;
 
         if (new_width  == this.img_width  &&
-            new_height == this.img_height &&
-            new_count  == this.img_count) {
+            new_height == this.img_height) {
             return;
-        }
-
-        if (this.img_width) {
-            // TODO update undo stack
         }
 
         const preview_cont_width = new_width + 10;
@@ -205,6 +199,8 @@ Editor.prototype = {
         E("image-container").elem.style.marginRight = preview_cont_width + "px";
 
         this.ResizeImages(new_width, new_height, new_count);
+
+        this.RebuildFooter();
 
         this.DrawPalette();
 
@@ -389,11 +385,26 @@ Editor.prototype = {
         this.preview.elem.src = this.preview_canvas.toDataURL();
     },
 
+    DrawTile: function(i)
+    {
+        const canvas = this.img_canvases[i];
+        if ( ! canvas) return;
+        const ctx = canvas.getContext("2d");
+        ctx.clearRect(0, 0, this.img_width, this.img_height);
+        const img = this.images[i];
+        for (let y = 0; y < this.img_height; y++) {
+            for (let x = 0; x < this.img_width; x++) {
+                ctx.fillStyle = "#" + img[y * this.img_width + x];
+                ctx.fillRect(x, y, 1, 1);
+            }
+        }
+    },
+
     DrawAllImg: function()
     {
         const img_width  = this.img_width;
         const img_height = this.img_height;
-        const img_count  = this.img_count;
+        const img_count  = this.images.length;
 
         this.all_img_canvas.width  = img_width * img_count;
         this.all_img_canvas.height = img_height;
@@ -401,44 +412,159 @@ Editor.prototype = {
         const ctx = this.all_img_canvas.getContext("2d");
 
         for (let i = 0; i < img_count; i++) {
-            let img = this.images[i];
+            const img = this.images[i];
             for (let y = 0; y < img_height; y++) {
                 for (let x = 0; x < img_width; x++) {
                     ctx.fillStyle = "#" + img[y * img_width + x];
                     ctx.fillRect(x + img_width * i, y, 1, 1);
                 }
             }
+            this.DrawTile(i);
         }
-
-        this.UpdateAllImages();
     },
 
     UpdateAllImages: function()
     {
-        this.all_img.elem.src = this.all_img_canvas.toDataURL();
+        // all_img_canvas is already updated pixel-by-pixel in SetColor;
+        // just refresh the tile display canvas
+        this.DrawTile(this.cur_image);
     },
 
-    UpdateMode: function()
+    RebuildFooter: function()
     {
-        this.mirror_x = E("mirror_x").elem.checked;
-        this.mirror_y = E("mirror_y").elem.checked;
+        const container = document.getElementById("all-images");
+        if ( ! container) return;
 
-        const old_mode = this.mode;
+        container.innerHTML = "";
+        this.img_canvases = [];
 
-        this.mode = E("mode_draw").elem.checked ? "draw" :
-                    E("mode_fill").elem.checked ? "fill" :
-                    E("mode_move").elem.checked ? "move" :
-                    null;
+        // Target display height ~64px, scale up small images
+        const scale = Math.max(1, Math.round(64 / this.img_height));
+        const css_w = this.img_width  * scale;
+        const css_h = this.img_height * scale;
 
-        if (this.mode !== "draw") {
-            this.mirror_x = false;
-            this.mirror_y = false;
+        for (let i = 0; i < this.images.length; i++) {
+            const tile = document.createElement("div");
+            tile.className = "img-tile" + (i === this.cur_image ? " selected" : "");
+            tile.draggable = true;
+
+            const canvas = document.createElement("canvas");
+            canvas.width  = this.img_width;
+            canvas.height = this.img_height;
+            canvas.style.width  = css_w + "px";
+            canvas.style.height = css_h + "px";
+
+            const del_btn = document.createElement("button");
+            del_btn.className = "img-tile-delete";
+            del_btn.textContent = "x";
+            del_btn.title = "Delete image";
+
+            tile.appendChild(canvas);
+            tile.appendChild(del_btn);
+            container.appendChild(tile);
+
+            this.img_canvases.push(canvas);
+            this.DrawTile(i);
+
+            // Closures capture index at creation time
+            (function(idx) {
+                tile.addEventListener("click", function(e) {
+                    if (e.target !== del_btn) {
+                        editor.SelectImage(idx);
+                    }
+                });
+                del_btn.addEventListener("click", function(e) {
+                    e.stopPropagation();
+                    editor.DeleteImage(idx);
+                });
+                tile.addEventListener("dragstart", function(e) {
+                    editor.drag_src = idx;
+                    e.dataTransfer.effectAllowed = "move";
+                    tile.classList.add("dragging");
+                });
+                tile.addEventListener("dragend", function() {
+                    tile.classList.remove("dragging");
+                });
+                tile.addEventListener("dragover", function(e) {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = "move";
+                    tile.classList.add("drag-over");
+                });
+                tile.addEventListener("dragleave", function() {
+                    tile.classList.remove("drag-over");
+                });
+                tile.addEventListener("drop", function(e) {
+                    e.preventDefault();
+                    tile.classList.remove("drag-over");
+                    if (editor.drag_src !== null && editor.drag_src !== idx) {
+                        editor.MoveImageInList(editor.drag_src, idx);
+                    }
+                });
+            })(i);
         }
 
-        if (old_mode === "move" && this.mode !== "move" && this.mouse_down) {
-            this.CancelMove();
-            this.mouse_down = null;
+        // "+" placeholder to add a new image
+        const add_tile = document.createElement("div");
+        add_tile.className = "img-tile-add";
+        add_tile.title = "Add new image";
+        add_tile.textContent = "+";
+        add_tile.style.width  = Math.max(css_w, 32) + "px";
+        add_tile.style.height = css_h + "px";
+        add_tile.addEventListener("click", function() { editor.AddImage(); });
+        container.appendChild(add_tile);
+    },
+
+    UpdateFooterSelection: function()
+    {
+        const tiles = document.querySelectorAll("#all-images .img-tile");
+        for (let i = 0; i < tiles.length; i++) {
+            tiles[i].classList.toggle("selected", i === this.cur_image);
         }
+    },
+
+    AddImage: function()
+    {
+        this.images.push((new Array(this.img_width * this.img_height)).fill(init_color));
+        this.RebuildFooter();
+    },
+
+    DeleteImage: function(i)
+    {
+        if (this.images.length <= 1) return;
+
+        const was_selected = (i === this.cur_image);
+        this.images.splice(i, 1);
+
+        if (i < this.cur_image) {
+            this.cur_image--;
+        } else if (this.cur_image >= this.images.length) {
+            this.cur_image = this.images.length - 1;
+        }
+
+        this.RebuildFooter();
+        this.DrawAllImg();
+
+        if (was_selected) {
+            this.DrawEditor();
+            this.DrawPreview();
+        }
+    },
+
+    MoveImageInList: function(from, to)
+    {
+        const img = this.images.splice(from, 1)[0];
+        this.images.splice(to, 0, img);
+
+        if (this.cur_image === from) {
+            this.cur_image = to;
+        } else if (from < this.cur_image && to >= this.cur_image) {
+            this.cur_image--;
+        } else if (from > this.cur_image && to <= this.cur_image) {
+            this.cur_image++;
+        }
+
+        this.RebuildFooter();
+        this.DrawAllImg();
     },
 
     SetColor: function(x, y, color)
@@ -817,30 +943,40 @@ Editor.prototype = {
         }
     },
 
-    OnImageSelect: function(e)
-    {
-        const client_x = e.clientX;
-        const client_y = e.clientY;
-
-        const rect = this.all_img.elem.getBoundingClientRect();
-        const img  = Math.floor((client_x - rect.x) / this.img_width);
-
-        if (img < 0 || img >= this.img_count) {
-            return;
-        }
-
-        this.SelectImage(img);
-    },
-
     SelectImage: function(img)
     {
         this.cur_image = img;
+
+        this.UpdateFooterSelection();
 
         this.DrawEditor();
 
         this.DrawPreview();
 
         this.OptimizePalette();
+    },
+
+    UpdateMode: function()
+    {
+        this.mirror_x = E("mirror_x").elem.checked;
+        this.mirror_y = E("mirror_y").elem.checked;
+
+        const old_mode = this.mode;
+
+        this.mode = E("mode_draw").elem.checked ? "draw" :
+                    E("mode_fill").elem.checked ? "fill" :
+                    E("mode_move").elem.checked ? "move" :
+                    null;
+
+        if (this.mode !== "draw") {
+            this.mirror_x = false;
+            this.mirror_y = false;
+        }
+
+        if (old_mode === "move" && this.mode !== "move" && this.mouse_down) {
+            this.CancelMove();
+            this.mouse_down = null;
+        }
     },
 
     UpdateSelCursor: function()
@@ -1031,9 +1167,12 @@ Editor.prototype = {
 
         E("img_width").elem.value  = new_width;
         E("img_height").elem.value = new_height;
-        E("img_count").elem.value  = new_count;
 
         this.cur_image = 0;
+
+        const preview_cont_width = new_width + 10;
+        E("preview-container").setAttr("style", "width: " + preview_cont_width + "px");
+        E("image-container").elem.style.marginRight = preview_cont_width + "px";
 
         this.ResizeImages(new_width, new_height, new_count);
 
@@ -1042,6 +1181,7 @@ Editor.prototype = {
         this.undo = [];
         this.redo = [];
 
+        this.RebuildFooter();
         this.DrawEditor();
         this.DrawPreview();
         this.DrawAllImg();
@@ -1052,7 +1192,7 @@ Editor.prototype = {
     {
         const img_width  = this.img_width;
         const img_height = this.img_height;
-        const img_count  = this.img_count;
+        const img_count  = this.images.length;
 
         const tmpCanvas  = document.createElement("canvas");
         tmpCanvas.width  = img_width * img_count;
